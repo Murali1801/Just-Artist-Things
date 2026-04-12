@@ -9,12 +9,11 @@ import { ShieldAlert, LogIn, Loader2, Home } from "lucide-react"
 import Link from "next/link"
 
 function AdminLoginContent() {
-  const { user, signInWithGoogle, loading } = useAuth()
+  const { user, signInWithGoogle, loading, isAdmin } = useAuth()
   const router = useRouter()
   const searchParams = useSearchParams()
   const error = searchParams.get('error')
 
-  const isAdmin = user?.email && process.env.NEXT_PUBLIC_ADMIN_EMAIL?.split(',').map(e => e.trim()).includes(user.email)
 
   useEffect(() => {
     if (!loading && user && isAdmin) {
@@ -43,9 +42,14 @@ function AdminLoginContent() {
         <motion.div 
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-destructive/10 text-destructive px-4 py-3 rounded-xl text-sm font-medium mb-8"
+          className="bg-destructive/10 border border-destructive/20 px-4 py-4 rounded-xl text-sm mb-8"
         >
-          Your account does not have admin privileges.
+          <p className="text-destructive font-bold mb-1">Access Denied</p>
+          <p className="text-destructive/80 text-xs">
+            {user?.email 
+              ? `Logged in as ${user.email}. This account is not listed as an administrator.` 
+              : 'Your account does not have admin privileges.'}
+          </p>
         </motion.div>
       )}
 
