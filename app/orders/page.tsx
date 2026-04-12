@@ -3,16 +3,12 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
-import { Package, Calendar, CreditCard, Truck, Clock, CheckCircle, AlertCircle } from "lucide-react"
+import { Package, Calendar, CreditCard, Truck, Clock, CheckCircle, AlertCircle, ArrowRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { useAuth } from "@/contexts/AuthContext"
-import { orderService, Order } from "@/lib/firebase/orderService"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
-import { toast } from "sonner"
+import { orderService, Order } from "@/lib/firebase/orderService"
+import { useAuth } from "@/contexts/AuthContext"
 
 export default function OrdersPage() {
   const router = useRouter()
@@ -185,11 +181,6 @@ export default function OrdersPage() {
           </div>
         )}
       </main>
-
-      <Footer />
-    </div>
-  )
-}
 
       <Footer />
     </div>
