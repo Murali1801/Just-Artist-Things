@@ -14,7 +14,7 @@ import AnalyticsDashboard from "@/components/analytics-dashboard-new"
 
 export default function AdminPage() {
   const router = useRouter()
-  const { user } = useAuth()
+  const { user, loading: authLoading } = useAuth()
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -33,17 +33,18 @@ export default function AdminPage() {
   const isAdmin = user?.email && process.env.NEXT_PUBLIC_ADMIN_EMAIL?.split(',').map(e => e.trim()).includes(user.email)
 
   useEffect(() => {
+    if (authLoading) return;
+    
     if (!user) {
-      router.push('/home')
+      router.push('/admin/login')
       return
     }
     if (!isAdmin) {
-      alert('Access denied. Admin only.')
-      router.push('/home')
+      router.push('/admin/login?error=unauthorized')
       return
     }
     loadProducts()
-  }, [user, isAdmin])
+  }, [user, isAdmin, authLoading])
 
   const loadProducts = async () => {
     try {
