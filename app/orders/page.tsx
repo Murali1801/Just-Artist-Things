@@ -34,7 +34,7 @@ export default function OrdersPage() {
   // Sync with FlowPay
   useEffect(() => {
     if (orders.length === 0) return;
-    const flowPayApiUrl = process.env.NEXT_PUBLIC_FLOWPAY_API_URL || 'https://flow-pay-api.vercel.app';
+    const flowPayApiUrl = (process.env.NEXT_PUBLIC_FLOWPAY_API_URL || 'https://flow-pay-api.vercel.app').replace(/\/$/, '');
     
     orders.forEach(async (order) => {
       if (order.paymentStatus === 'Pending (FlowPay)' && order.externalOrderId && order.id) {

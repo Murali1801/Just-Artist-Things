@@ -47,7 +47,8 @@ export default function PaymentPage() {
 
     try {
       // 1. Create a payment session in FlowPay
-      const flowPayApiUrl = process.env.NEXT_PUBLIC_FLOWPAY_API_URL || 'https://flow-pay-api.vercel.app'
+      const flowPayApiUrl = (process.env.NEXT_PUBLIC_FLOWPAY_API_URL || 'https://flow-pay-api.vercel.app').replace(/\/$/, '')
+      const flowPayWebUrl = (process.env.NEXT_PUBLIC_FLOWPAY_FRONTEND_URL || 'https://flow-pay-self.vercel.app').replace(/\/$/, '')
       
       const apiKey = process.env.NEXT_PUBLIC_FLOWPAY_API_KEY || ''
       const merchantId = process.env.NEXT_PUBLIC_FLOWPAY_MERCHANT_ID || undefined
@@ -108,7 +109,6 @@ export default function PaymentPage() {
       sessionStorage.removeItem('checkoutData')
       
       // 3. Redirect to FlowPay Checkout
-      const flowPayWebUrl = process.env.NEXT_PUBLIC_FLOWPAY_FRONTEND_URL || 'https://flow-pay-self.vercel.app'
       window.location.href = `${flowPayWebUrl}/pay/${flowPayOrderId}`
       
     } catch (error) {
