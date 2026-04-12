@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
 import { Menu, X, Moon, Sun, LogIn, LogOut, User, Heart, ShoppingCart, Package } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useRouter } from "next/navigation"
