@@ -3,13 +3,13 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
-import { ArrowLeft, CreditCard, Smartphone, AlertTriangle } from "lucide-react"
+import { ArrowLeft, CreditCard, Smartphone, AlertTriangle, ShieldCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+
 import { useCart } from "@/contexts/CartContext"
 import { useAuth } from "@/contexts/AuthContext"
 import { productService } from "@/lib/firebase/productService"
@@ -33,7 +33,7 @@ export default function CheckoutPage() {
     pincode: "",
   })
 
-  const [paymentMethod, setPaymentMethod] = useState("simulated")
+  const [paymentMethod, setPaymentMethod] = useState("flowpay")
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [stockInfo, setStockInfo] = useState<Record<string, number>>({})
   const [stockValidation, setStockValidation] = useState({ isValid: true, issues: [] as string[] })
@@ -49,6 +49,7 @@ export default function CheckoutPage() {
       return
     }
   }, [user, cart, router])
+
   useEffect(() => {
     const validateStock = async () => {
       if (!cart?.items.length) return
@@ -126,7 +127,7 @@ export default function CheckoutPage() {
     // Store checkout data in sessionStorage
     sessionStorage.setItem('checkoutData', JSON.stringify({
       shippingAddress: formData,
-      paymentMethod,
+      paymentMethod: 'flowpay',
       items: cart?.items,
       totalAmount: getTotalAmount()
     }))
@@ -289,31 +290,21 @@ export default function CheckoutPage() {
                 </Card>
 
                 <Card className="p-6 mb-6">
-                  <h2 className="text-xl font-bold mb-4">Payment Method</h2>
-                  
-                  <RadioGroup value={paymentMethod} onValueChange={setPaymentMethod}>
-                    <div className="flex items-center space-x-3 p-4 border rounded-lg mb-3 cursor-pointer hover:bg-accent">
-                      <RadioGroupItem value="simulated" id="simulated" />
-                      <Label htmlFor="simulated" className="flex items-center gap-2 cursor-pointer flex-1">
-                        <CreditCard className="h-5 w-5" />
-                        <div>
-                          <p className="font-medium">Simulated Online Payment</p>
-                          <p className="text-sm text-muted-foreground">Instant payment simulation (for demo)</p>
-                        </div>
-                      </Label>
-                    </div>
+                  <div className="flex items-center justify-between mb-2">
+                    <h2 className="text-xl font-bold">Secure Payment</h2>
+                    <ShieldCheck className="h-5 w-5 text-green-600" />
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Your transaction will be securely processed by FlowPay.
+                  </p>
 
-                    <div className="flex items-center space-x-3 p-4 border rounded-lg cursor-pointer hover:bg-accent">
-                      <RadioGroupItem value="upi" id="upi" />
-                      <Label htmlFor="upi" className="flex items-center gap-2 cursor-pointer flex-1">
-                        <Smartphone className="h-5 w-5" />
-                        <div>
-                          <p className="font-medium">UPI QR Payment</p>
-                          <p className="text-sm text-muted-foreground">Scan QR code and pay manually</p>
-                        </div>
-                      </Label>
+                  <div className="flex items-center space-x-3 p-4 border rounded-lg bg-accent/50">
+                    <Smartphone className="h-6 w-6 text-primary" />
+                    <div>
+                      <p className="font-bold">FlowPay Secure Checkout</p>
+                      <p className="text-sm text-muted-foreground">UPI, Credit/Debit Cards, NetBanking</p>
                     </div>
-                  </RadioGroup>
+                  </div>
                 </Card>
 
                 <Button 

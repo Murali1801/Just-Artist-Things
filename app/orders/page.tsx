@@ -31,6 +31,33 @@ export default function OrdersPage() {
     return () => unsubscribe()
   }, [user, router])
 
+  // Sync with FlowPay
+  useEffect(() => {
+    if (orders.length === 0) return;
+    const flowPayApiUrl = process.env.NEXT_PUBLIC_FLOWPAY_API_URL || 'https://flow-pay-api.vercel.app';
+    
+    orders.forEach(async (order) => {
+      if (order.paymentStatus === 'Pending (FlowPay)' && order.externalOrderId && order.id) {
+        try {
+          const res = await fetch(`${flowPayApiUrl}/api/orders/${order.externalOrderId}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.status === 'Paid') {
+              await orderService.updateOrderStatus(order.id, {
+                paymentStatus: 'Paid (FlowPay)',
+                orderStatus: 'Processing'
+                // NOTE: Stock deduction handled by admin natively in the future,
+                // or you could add a serverless function here.
+              });
+            }
+          }
+        } catch (e) {
+          console.error('Failed to sync FlowPay order status', e);
+        }
+      }
+    });
+  }, [orders]);
+
   const getStatusIcon = (status: string) => {
     const s = status.toLowerCase()
     if (s.includes('processing')) return <Clock size={14} className="animate-pulse" />

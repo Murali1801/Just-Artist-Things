@@ -34,6 +34,7 @@ export interface Order {
   paymentStatus: string;
   orderStatus: string;
   createdAt: Date;
+  externalOrderId?: string;
 }
 
 const ORDERS_COLLECTION = 'orders';
@@ -77,6 +78,11 @@ export const orderService = {
     
     const doc = querySnapshot.docs[0];
     return { id: doc.id, ...doc.data() } as Order;
+  },
+
+  async updateOrderStatus(localId: string, updates: Partial<Order>): Promise<void> {
+    const ref = doc(db, ORDERS_COLLECTION, localId);
+    await setDoc(ref, updates, { merge: true });
   },
 
   // Real-time listener for a single order

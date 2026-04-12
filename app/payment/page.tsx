@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
-import { ArrowLeft, CreditCard, Smartphone, CheckCircle, Loader2, QrCode } from "lucide-react"
+import { ArrowLeft, Smartphone, CheckCircle, Loader2, QrCode, ShieldCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
@@ -40,42 +40,7 @@ export default function PaymentPage() {
     setCheckoutData(JSON.parse(data))
   }, [user, router])
 
-  const handleSimulatedPayment = async () => {
-    setProcessing(true)
 
-    // Simulate payment processing
-    await new Promise(resolve => setTimeout(resolve, 2500))
-
-    try {
-      const newOrderId = await orderService.createOrder({
-        userId: user!.uid,
-        userEmail: user!.email || '',
-        userName: user!.displayName || 'Guest',
-        items: checkoutData.items,
-        totalAmount: checkoutData.totalAmount,
-        shippingAddress: checkoutData.shippingAddress,
-        paymentMethod: 'Simulated Online Payment',
-        paymentStatus: 'Paid (Simulated)',
-        orderStatus: 'Processing'
-      })
-
-      setOrderId(newOrderId)
-      await clearCart()
-      sessionStorage.removeItem('checkoutData')
-      setShowSuccess(true)
-      toast.success('Payment successful!')
-    } catch (error) {
-      console.error('Error creating order:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Failed to create order'
-      if (errorMessage.includes('Insufficient stock')) {
-        toast.error('Some items are out of stock. Please update your cart.')
-        router.push('/cart')
-      } else {
-        toast.error(errorMessage)
-      }
-      setProcessing(false)
-    }
-  }
 
   const handleUPIPayment = async () => {
     setProcessing(true)
@@ -83,18 +48,24 @@ export default function PaymentPage() {
     try {
       // 1. Create a payment session in FlowPay
       const flowPayApiUrl = process.env.NEXT_PUBLIC_FLOWPAY_API_URL || 'https://flow-pay-api.vercel.app'
+      
+      const apiKey = process.env.NEXT_PUBLIC_FLOWPAY_API_KEY || ''
+      const merchantId = process.env.NEXT_PUBLIC_FLOWPAY_MERCHANT_ID || undefined
+      
       const response = await fetch(`${flowPayApiUrl}/api/checkout`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(apiKey ? { 'X-API-Key': apiKey } : {})
         },
         body: JSON.stringify({
-          amount: checkoutData.totalAmount
+          amount: checkoutData.totalAmount,
+          ...(merchantId ? { merchant_id: merchantId } : {})
         }),
       })
 
       if (!response.ok) {
-        throw new Error('Failed to create FlowPay payment session')
+        throw new Error('Failed to create secure FlowPay payment session')
       }
 
       const { order_id: flowPayOrderId } = await response.json()
@@ -170,9 +141,7 @@ export default function PaymentPage() {
                 
                 <h1 className="text-3xl font-bold mb-2">Order Placed Successfully!</h1>
                 <p className="text-muted-foreground mb-6">
-                  {checkoutData.paymentMethod === 'simulated' 
-                    ? 'Your payment has been processed successfully.'
-                    : 'Your order is placed. Payment verification is pending.'}
+                  Your order is placed. Payment verification is pending.
                 </p>
                 
                 <div className="bg-accent p-4 rounded-lg mb-6 inline-block">
@@ -197,38 +166,38 @@ export default function PaymentPage() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
             >
-              <h1 className="text-4xl font-serif font-bold mb-8">Payment</h1>
+              <h1 className="text-4xl font-serif font-bold mb-8">Secure Payment</h1>
 
               <div className="grid md:grid-cols-2 gap-6 mb-8">
-                {/* Simulated Payment */}
-                <Card className="p-6 hover:shadow-lg transition-shadow">
+                {/* FlowPay Payment Only */}
+                <Card className="p-6 border-primary/50 shadow-md">
                   <div className="flex items-center gap-3 mb-4">
                     <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                      <CreditCard className="w-6 h-6 text-primary" />
+                      <ShieldCheck className="w-6 h-6 text-primary" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-lg">Simulated Payment</h3>
-                      <p className="text-sm text-muted-foreground">Instant payment demo</p>
+                      <h3 className="font-bold text-lg">FlowPay Checkout</h3>
+                      <p className="text-sm text-muted-foreground">UPI, Cards, NetBanking</p>
                     </div>
                   </div>
                   
                   <ul className="space-y-2 mb-6 text-sm">
                     <li className="flex items-center gap-2">
                       <CheckCircle className="w-4 h-4 text-green-500" />
-                      Instant order confirmation
+                      100% Encrypted & Secure
                     </li>
                     <li className="flex items-center gap-2">
                       <CheckCircle className="w-4 h-4 text-green-500" />
-                      No real money involved
+                      Scan QR with any UPI app
                     </li>
                     <li className="flex items-center gap-2">
                       <CheckCircle className="w-4 h-4 text-green-500" />
-                      Perfect for demo/testing
+                      Instant order verification
                     </li>
                   </ul>
 
                   <Button 
-                    onClick={handleSimulatedPayment} 
+                    onClick={handleUPIPayment} 
                     className="w-full" 
                     size="lg"
                     disabled={processing}
@@ -236,55 +205,14 @@ export default function PaymentPage() {
                     {processing ? (
                       <>
                         <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                        Processing Payment...
+                        Connecting to FlowPay...
                       </>
                     ) : (
                       <>
-                        <CreditCard className="mr-2 h-5 w-5" />
-                        Pay ₹{checkoutData.totalAmount.toFixed(2)}
+                        <Smartphone className="mr-2 h-5 w-5" />
+                        Pay ₹{checkoutData.totalAmount.toFixed(2)} Securely
                       </>
                     )}
-                  </Button>
-                </Card>
-
-                {/* UPI Payment */}
-                <Card className="p-6 hover:shadow-lg transition-shadow">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center">
-                      <Smartphone className="w-6 h-6 text-purple-600" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-lg">FlowPay Checkout</h3>
-                      <p className="text-sm text-muted-foreground">UPI / Cards / NetBanking</p>
-
-                    </div>
-                  </div>
-                  
-                  <ul className="space-y-2 mb-6 text-sm">
-                    <li className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-green-500" />
-                      Scan QR with any UPI app
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-green-500" />
-                      Manual verification
-                    </li>
-                    <li className="flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4 text-green-500" />
-                      Secure payment
-                    </li>
-                  </ul>
-
-                  <Button 
-                    onClick={handleUPIPayment} 
-                    variant="outline" 
-                    className="w-full" 
-                    size="lg"
-                    disabled={processing}
-                  >
-                    <Smartphone className="mr-2 h-5 w-5" />
-                    Pay via FlowPay
-
                   </Button>
                 </Card>
               </div>
