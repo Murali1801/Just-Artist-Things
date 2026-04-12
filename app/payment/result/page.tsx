@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, Suspense } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { CheckCircle2, XCircle, Loader2, Home, Package, ShoppingBag, ArrowRight } from "lucide-react"
@@ -9,7 +9,7 @@ import Header from "@/components/header"
 import { orderService, Order } from "@/lib/firebase/orderService"
 import Link from "next/link"
 
-export default function PaymentResultPage() {
+function PaymentResultContent() {
   const searchParams = useSearchParams()
   const router = useRouter()
   const [order, setOrder] = useState<Order | null>(null)
@@ -157,40 +157,53 @@ export default function PaymentResultPage() {
   }
 
   return (
+    <div className="glass-card max-w-3xl mx-auto rounded-[3rem] p-12 overflow-hidden relative">
+      {/* Background Accents */}
+      <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 blur-[80px] -z-10" />
+      <div className="absolute bottom-0 left-0 w-64 h-64 bg-secondary/10 blur-[80px] -z-10" />
+      
+      <AnimatePresence mode="wait">
+        {renderStatus()}
+      </AnimatePresence>
+
+      {order && (
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-12 pt-12 border-t border-border"
+        >
+          <div className="grid grid-cols-2 gap-8 text-left">
+            <div>
+              <span className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground block mb-2">Deliver To:</span>
+              <p className="text-sm font-bold">{order.shippingAddress.fullName}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {order.shippingAddress.city}, {order.shippingAddress.state}
+              </p>
+            </div>
+            <div className="text-right">
+              <span className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground block mb-2">Total Amount:</span>
+              <p className="text-xl font-bold text-foreground">₹{order.totalAmount.toFixed(2)}</p>
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </div>
+  )
+}
+
+export default function PaymentResultPage() {
+  return (
     <div className="min-h-screen">
       <Header />
       <main className="max-w-7xl mx-auto px-6 pt-32 pb-20">
-        <div className="glass-card max-w-3xl mx-auto rounded-[3rem] p-12 overflow-hidden relative">
-          {/* Background Accents */}
-          <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 blur-[80px] -z-10" />
-          <div className="absolute bottom-0 left-0 w-64 h-64 bg-secondary/10 blur-[80px] -z-10" />
-          
-          <AnimatePresence mode="wait">
-            {renderStatus()}
-          </AnimatePresence>
-
-          {order && (
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mt-12 pt-12 border-t border-border"
-            >
-              <div className="grid grid-cols-2 gap-8 text-left">
-                <div>
-                  <span className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground block mb-2">Deliver To:</span>
-                  <p className="text-sm font-bold">{order.shippingAddress.fullName}</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {order.shippingAddress.city}, {order.shippingAddress.state}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <span className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground block mb-2">Total Amount:</span>
-                  <p className="text-xl font-bold text-foreground">₹{order.totalAmount.toFixed(2)}</p>
-                </div>
-              </div>
-            </motion.div>
-          )}
-        </div>
+        <Suspense fallback={
+          <div className="flex flex-col items-center justify-center py-20">
+            <Loader2 className="h-16 w-16 text-primary animate-spin mb-6" />
+            <h2 className="text-2xl font-serif font-bold">Connecting to Studio...</h2>
+          </div>
+        }>
+          <PaymentResultContent />
+        </Suspense>
       </main>
     </div>
   )
