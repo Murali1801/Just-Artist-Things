@@ -90,7 +90,7 @@ export default function PaymentPage() {
       
       // 3. Redirect to FlowPay Checkout
       const flowPayWebUrl = process.env.NEXT_PUBLIC_FLOWPAY_FRONTEND_URL || 'https://flow-pay-self.vercel.app'
-      window.location.href = `${flowPayWebUrl}/${flowPayOrderId}`
+      window.location.href = `${flowPayWebUrl}/pay/${flowPayOrderId}`
       
     } catch (error) {
       console.error('Error initiating FlowPay payment:', error)
