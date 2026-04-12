@@ -14,20 +14,24 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-const db = getFirestore(app);
-const auth = getAuth(app);
-const storage = getStorage(app);
+const app = (getApps().length === 0 && firebaseConfig.apiKey) 
+  ? initializeApp(firebaseConfig) 
+  : (getApps().length > 0 ? getApp() : null);
+
+const db = app ? getFirestore(app) : null;
+const auth = app ? getAuth(app) : null;
+const storage = app ? getStorage(app) : null;
 
 // Analytics requires window to be defined, so we check for support
 let analytics = null;
-if (typeof window !== 'undefined') {
+if (typeof window !== 'undefined' && app) {
   isSupported().then(supported => {
     if (supported) {
       analytics = getAnalytics(app);
     }
   });
 }
+
 
 export { app, db, auth, storage, analytics };
 
