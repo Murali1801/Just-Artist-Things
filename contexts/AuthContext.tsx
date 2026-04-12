@@ -27,11 +27,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       
       if (currentUser?.email) {
         try {
-          // Check if user is in admins collection
-          // Fallback to checking the environment variable just in case collection hasn't been set up yet
-          const adminDoc = await getDoc(doc(db, 'admins', currentUser.email));
+          // Support both "admins" and "admin" collection names just in case
+          const adminsDoc = await getDoc(doc(db, 'admins', currentUser.email));
+          const adminOldDoc = await getDoc(doc(db, 'admin', currentUser.email));
+          
+          const isDbAdmin = adminsDoc.exists() || adminOldDoc.exists();
           const isEnvAdmin = process.env.NEXT_PUBLIC_ADMIN_EMAIL?.split(',').map(e => e.trim()).includes(currentUser.email) || false;
-          setIsAdmin(adminDoc.exists() || isEnvAdmin);
+          
+          setIsAdmin(isDbAdmin || isEnvAdmin);
         } catch (error) {
           console.error("Error checking admin status:", error);
           setIsAdmin(false);
