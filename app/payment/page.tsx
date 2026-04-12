@@ -77,14 +77,29 @@ export default function PaymentPage() {
     }
   }
 
-  const handleUPIPayment = () => {
-    setShowQR(true)
-  }
-
-  const handleUPIConfirmation = async () => {
+  const handleUPIPayment = async () => {
     setProcessing(true)
 
     try {
+      // 1. Create a payment session in FlowPay
+      const flowPayApiUrl = process.env.NEXT_PUBLIC_FLOWPAY_API_URL || 'https://flow-pay-api.vercel.app'
+      const response = await fetch(`${flowPayApiUrl}/api/checkout`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: checkoutData.totalAmount
+        }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to create FlowPay payment session')
+      }
+
+      const { order_id: flowPayOrderId } = await response.json()
+
+      // 2. Create the local order in Firebase for tracking
       const newOrderId = await orderService.createOrder({
         userId: user!.uid,
         userEmail: user!.email || '',
@@ -92,28 +107,28 @@ export default function PaymentPage() {
         items: checkoutData.items,
         totalAmount: checkoutData.totalAmount,
         shippingAddress: checkoutData.shippingAddress,
-        paymentMethod: 'UPI QR Payment',
-        paymentStatus: 'Manual Verification Pending',
-        orderStatus: 'Payment Verification'
+        paymentMethod: 'FlowPay (UPI)',
+        paymentStatus: 'Pending (FlowPay)',
+        orderStatus: 'Payment Verification',
+        externalOrderId: flowPayOrderId // Store FlowPay ID for reference
       })
 
       setOrderId(newOrderId)
       await clearCart()
       sessionStorage.removeItem('checkoutData')
-      setShowSuccess(true)
-      toast.success('Order placed! Payment verification pending')
+      
+      // 3. Redirect to FlowPay Checkout
+      const flowPayWebUrl = process.env.NEXT_PUBLIC_FLOWPAY_FRONTEND_URL || 'https://flow-pay-self.vercel.app'
+      window.location.href = `${flowPayWebUrl}/${flowPayOrderId}`
+      
     } catch (error) {
-      console.error('Error creating order:', error)
-      const errorMessage = error instanceof Error ? error.message : 'Failed to create order'
-      if (errorMessage.includes('Insufficient stock')) {
-        toast.error('Some items are out of stock. Please update your cart.')
-        router.push('/cart')
-      } else {
-        toast.error(errorMessage)
-      }
+      console.error('Error initiating FlowPay payment:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Failed to initiate payment'
+      toast.error(errorMessage)
       setProcessing(false)
     }
   }
+
 
   if (!user || !checkoutData) {
     return null
@@ -171,73 +186,6 @@ export default function PaymentPage() {
                   </Button>
                   <Button onClick={() => router.push('/home')} variant="outline" size="lg">
                     Continue Shopping
-                  </Button>
-                </div>
-              </Card>
-            </motion.div>
-          ) : showQR ? (
-            <motion.div
-              key="qr"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-            >
-              <h1 className="text-4xl font-serif font-bold mb-8">UPI Payment</h1>
-              
-              <Card className="p-8">
-                <div className="text-center mb-6">
-                  <QrCode className="w-16 h-16 mx-auto mb-4 text-primary" />
-                  <h2 className="text-2xl font-bold mb-2">Scan QR Code to Pay</h2>
-                  <p className="text-muted-foreground">Use any UPI app to complete payment</p>
-                </div>
-
-                <div className="bg-white p-8 rounded-lg border-2 border-dashed max-w-sm mx-auto mb-6">
-                  <div className="aspect-square bg-gradient-to-br from-purple-100 to-blue-100 rounded-lg flex items-center justify-center">
-                    <div className="text-center">
-                      <QrCode className="w-32 h-32 mx-auto mb-4 text-gray-400" />
-                      <p className="text-sm text-gray-500">QR Code Placeholder</p>
-                      <p className="text-xs text-gray-400 mt-2">In production, display actual UPI QR</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-accent p-4 rounded-lg mb-6">
-                  <div className="flex justify-between mb-2">
-                    <span className="text-muted-foreground">Amount to Pay</span>
-                    <span className="font-bold text-xl">₹{checkoutData.totalAmount.toFixed(2)}</span>
-                  </div>
-                </div>
-
-                <Separator className="my-6" />
-
-                <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground text-center">
-                    After completing the payment, click the button below
-                  </p>
-                  
-                  <Button 
-                    onClick={handleUPIConfirmation} 
-                    size="lg" 
-                    className="w-full"
-                    disabled={processing}
-                  >
-                    {processing ? (
-                      <>
-                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                        Processing...
-                      </>
-                    ) : (
-                      'I have completed the payment'
-                    )}
-                  </Button>
-
-                  <Button 
-                    onClick={() => setShowQR(false)} 
-                    variant="outline" 
-                    className="w-full"
-                    disabled={processing}
-                  >
-                    Back
                   </Button>
                 </div>
               </Card>
@@ -306,8 +254,9 @@ export default function PaymentPage() {
                       <Smartphone className="w-6 h-6 text-purple-600" />
                     </div>
                     <div>
-                      <h3 className="font-bold text-lg">UPI QR Payment</h3>
-                      <p className="text-sm text-muted-foreground">Scan & pay manually</p>
+                      <h3 className="font-bold text-lg">FlowPay Checkout</h3>
+                      <p className="text-sm text-muted-foreground">UPI / Cards / NetBanking</p>
+
                     </div>
                   </div>
                   
@@ -333,8 +282,9 @@ export default function PaymentPage() {
                     size="lg"
                     disabled={processing}
                   >
-                    <QrCode className="mr-2 h-5 w-5" />
-                    Pay via UPI
+                    <Smartphone className="mr-2 h-5 w-5" />
+                    Pay via FlowPay
+
                   </Button>
                 </Card>
               </div>
