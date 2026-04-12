@@ -45,7 +45,6 @@ export default function ProductDetail({ product, onClose, allProducts, onProduct
       return
     }
 
-    // Check if product is out of stock
     if (product.stock !== undefined && product.stock <= 0) {
       alert('This item is out of stock')
       return
@@ -84,13 +83,9 @@ export default function ProductDetail({ product, onClose, allProducts, onProduct
   }, [])
 
   const handleWhatsAppInquiry = () => {
-    const message = encodeURIComponent(`Hi! I'm interested in: ${product.name}\n\nCould you provide more details?`)
+    const message = encodeURIComponent(`Hi! I'm interested in the signature piece: ${product.name}\n\nCould you provide more details regarding its availability?`)
     const whatsappUrl = `https://api.whatsapp.com/send?phone=${WHATSAPP_NUMBER}&text=${message}`
     window.open(whatsappUrl, '_blank')
-  }
-
-  const handleInstagramInquiry = () => {
-    window.open(INSTAGRAM_URL, '_blank')
   }
 
   return (
@@ -99,128 +94,137 @@ export default function ProductDetail({ product, onClose, allProducts, onProduct
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+        className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4 md:p-10"
         onClick={onClose}
       >
         <motion.div
-          initial={{ scale: 0.95, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          exit={{ scale: 0.95, opacity: 0 }}
-          transition={{ duration: 0.2 }}
-          className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl max-w-6xl w-full h-[90vh] overflow-hidden flex flex-col"
+          initial={{ y: 50, opacity: 0, scale: 0.9 }}
+          animate={{ y: 0, opacity: 1, scale: 1 }}
+          exit={{ y: 50, opacity: 0, scale: 0.9 }}
+          transition={{ type: "spring", damping: 25, stiffness: 200 }}
+          className="glass shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] max-w-7xl w-full h-[95vh] md:h-[85vh] rounded-[3rem] overflow-hidden flex flex-col md:flex-row relative border-white/10"
           onClick={(e) => e.stopPropagation()}
         >
-          {/* Close Button */}
+          {/* Close - Absolute */}
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 p-2 rounded-full bg-white/90 dark:bg-slate-800/90 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors z-10 shadow-lg"
+            className="absolute top-8 right-8 p-3 rounded-2xl glass hover:bg-white/20 transition-all z-50 group border-white/10"
           >
-            <X className="h-5 w-5 text-gray-600 dark:text-gray-300" />
+            <X className="h-6 w-6 text-foreground/70 group-hover:rotate-90 transition-transform duration-300" />
           </button>
 
-          <div className="grid md:grid-cols-2 h-full overflow-hidden">
-            {/* Image Section */}
-            <div className="relative bg-gradient-to-br from-gray-50 to-gray-100 dark:from-slate-800 dark:to-slate-700 flex items-center justify-center p-8">
-              <Image
-                src={product.image}
-                alt={product.name}
-                fill
-                className="object-contain p-8"
-                priority
-              />
+          {/* Left: Visual Focus */}
+          <div className="md:w-3/5 h-[40vh] md:h-full relative bg-[#020617] group overflow-hidden">
+            <Image
+              src={product.image}
+              alt={product.name}
+              fill
+              className="object-cover transition-transform duration-1000 group-hover:scale-105"
+              priority
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60" />
+            
+            <div className="absolute bottom-12 left-12">
+              <span className="text-[10px] uppercase tracking-[0.4em] font-bold text-primary mb-2 block">
+                Artistic Detail
+              </span>
+              <h3 className="text-white text-3xl font-serif font-bold italic opacity-80">
+                Crafted with intention.
+              </h3>
             </div>
+          </div>
 
-            {/* Content Section */}
-            <div className="flex flex-col p-6 md:p-8 h-full overflow-y-auto">
-              {/* Product Info */}
-              <div className="flex-shrink-0 mb-4">
-                <span className="inline-block px-3 py-1 bg-teal-100 dark:bg-teal-900/50 text-teal-700 dark:text-teal-300 text-xs font-semibold rounded-full uppercase tracking-wider mb-3">
+          {/* Right: Curatory Information */}
+          <div className="md:w-2/5 h-full flex flex-col p-10 md:p-16 overflow-y-auto custom-scrollbar">
+            <div className="mb-12">
+              <div className="flex items-center gap-4 mb-8">
+                <span className="text-[10px] uppercase tracking-[0.3em] font-bold text-primary glass px-4 py-1.5 rounded-full border-primary/20">
                   {product.category}
                 </span>
-                <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-3 leading-tight">
-                  {product.name}
-                </h2>
-                <p className="text-gray-600 dark:text-gray-300 text-base leading-relaxed mb-4">
-                  {product.description}
-                </p>
-
-                {/* Price and Stock */}
-                <div className="mb-4">
-                  {product.price && product.price > 0 && (
-                    <p className="text-2xl font-bold text-primary mb-2">₹{product.price.toFixed(2)}</p>
-                  )}
-                  {product.stock !== undefined && (
+                {product.stock !== undefined && (
+                  <div className="scale-90 origin-left">
                     <StockStatus stock={product.stock} variant="detailed" />
-                  )}
-                </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex-shrink-0 space-y-3 mb-6">
-                {user && (
-                  <div className="flex gap-2 mb-3">
-                    <Button
-                      onClick={handleAddToCart}
-                      disabled={product.stock !== undefined && product.stock <= 0}
-                      className="flex-1 bg-primary hover:bg-primary/90 text-primary-foreground h-12 text-sm font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <ShoppingCart className="mr-2 h-4 w-4" />
-                      {product.stock !== undefined && product.stock <= 0 ? 'Out of Stock' : 'Add to Cart'}
-                    </Button>
-                    <Button
-                      onClick={handleFavoriteToggle}
-                      variant="outline"
-                      className="h-12 px-4 rounded-xl shadow-lg hover:shadow-xl transition-all"
-                    >
-                      <Heart className={`h-5 w-5 ${isFavorite(product.id) ? 'fill-red-500 text-red-500' : ''}`} />
-                    </Button>
                   </div>
                 )}
-                <Button
-                  onClick={handleWhatsAppInquiry}
-                  className="w-full bg-[#25D366] hover:bg-[#20BA5A] text-white h-12 text-sm font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all"
-                >
-                  <MessageCircle className="mr-2 h-4 w-4" />
-                  Inquire on WhatsApp
-                </Button>
-                <Button
-                  onClick={handleInstagramInquiry}
-                  className="w-full bg-gradient-to-r from-[#F58529] via-[#DD2A7B] to-[#8134AF] hover:opacity-90 text-white h-12 text-sm font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all"
-                >
-                  <Instagram className="mr-2 h-4 w-4" />
-                  Inquire on Instagram
-                </Button>
+              </div>
+              
+              <h2 className="text-5xl font-serif font-bold text-foreground mb-8 leading-[1.1]">
+                {product.name}
+              </h2>
+              
+              <p className="text-muted-foreground text-lg leading-relaxed font-sans mb-10">
+                {product.description}
+              </p>
+
+              <div className="flex items-baseline gap-4 mb-12">
+                {product.price && (
+                  <span className="text-4xl font-bold text-foreground">
+                    ₹{product.price.toFixed(2)}
+                  </span>
+                )}
+                <span className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Inc. GST & Shipping</span>
               </div>
 
-              {/* Related Products */}
-              {relatedProducts.length > 0 && (
-                <div className="flex-1 border-t dark:border-slate-700 pt-4 min-h-0">
-                  <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-3">You Might Also Like</h3>
-                  <div className="grid grid-cols-3 gap-2">
-                    {relatedProducts.map((relatedProduct) => (
-                      <Card
-                        key={relatedProduct.id}
-                        className="cursor-pointer hover:shadow-lg transition-all overflow-hidden group border-2 border-transparent hover:border-teal-300 dark:hover:border-teal-700"
-                        onClick={() => onProductSelect(relatedProduct)}
-                      >
-                        <div className="aspect-square relative bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-slate-700 dark:to-slate-600">
-                          <Image
-                            src={relatedProduct.image}
-                            alt={relatedProduct.name}
-                            fill
-                            sizes="33vw"
-                            className="object-cover group-hover:scale-110 transition-transform duration-300"
-                          />
-                        </div>
-                        <div className="p-1.5">
-                          <p className="text-[10px] font-medium text-gray-900 dark:text-white truncate">{relatedProduct.name}</p>
-                        </div>
-                      </Card>
-                    ))}
-                  </div>
+              {/* Interaction Block */}
+              <div className="space-y-4">
+                <div className="flex gap-4">
+                  <Button
+                    onClick={handleAddToCart}
+                    disabled={product.stock !== undefined && product.stock <= 0}
+                    className="flex-[4] h-16 rounded-2xl bg-primary text-primary-foreground font-bold text-xs uppercase tracking-[0.2em] shadow-2xl shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all"
+                  >
+                    <ShoppingCart className="mr-3 h-4 w-4" />
+                    {product.stock !== undefined && product.stock <= 0 ? 'Exhausted' : 'Acquire Piece'}
+                  </Button>
+                  <Button
+                    onClick={handleFavoriteToggle}
+                    className={`flex-1 h-16 rounded-2xl glass border-primary/10 hover:bg-primary/5 transition-all ${
+                      isFavorite(product.id) ? 'text-primary' : 'text-foreground/50'
+                    }`}
+                  >
+                    <Heart className={`h-6 w-6 ${isFavorite(product.id) ? 'fill-primary' : ''}`} />
+                  </Button>
                 </div>
-              )}
+
+                <Button
+                  onClick={handleWhatsAppInquiry}
+                  variant="outline"
+                  className="w-full h-16 rounded-2xl border-border/50 hover:bg-muted font-bold text-[10px] uppercase tracking-[0.25em]"
+                >
+                  <MessageCircle className="mr-3 h-4 w-4" />
+                  Request Bespoke Customization
+                </Button>
+              </div>
             </div>
+
+            {/* Related/Complementary */}
+            {relatedProducts.length > 0 && (
+              <div className="mt-auto pt-10 border-t border-border/30">
+                <h4 className="text-[10px] uppercase tracking-[0.3em] font-bold text-muted-foreground mb-6">Complementary Works</h4>
+                <div className="grid grid-cols-3 gap-4">
+                  {relatedProducts.map((related) => (
+                    <motion.div
+                      key={related.id}
+                      whileHover={{ y: -5 }}
+                      className="group cursor-pointer"
+                      onClick={() => onProductSelect(related)}
+                    >
+                      <div className="aspect-square relative rounded-2xl overflow-hidden mb-2 bg-muted border border-border/50">
+                        <Image
+                          src={related.image}
+                          alt={related.name}
+                          fill
+                          className="object-cover grayscale group-hover:grayscale-0 transition-all duration-500"
+                        />
+                      </div>
+                      <p className="text-[9px] font-bold uppercase tracking-wider truncate text-muted-foreground group-hover:text-primary transition-colors">
+                        {related.name}
+                      </p>
+                    </motion.div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </motion.div>
       </motion.div>

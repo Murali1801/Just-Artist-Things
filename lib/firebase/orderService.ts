@@ -1,4 +1,4 @@
-import { collection, doc, setDoc, getDoc, getDocs, query, where, orderBy, addDoc, Timestamp } from 'firebase/firestore';
+import { collection, doc, setDoc, getDoc, getDocs, query, where, orderBy, addDoc, Timestamp, onSnapshot } from 'firebase/firestore';
 import { db } from './config';
 import { productService } from './productService';
 
@@ -79,6 +79,19 @@ export const orderService = {
     return { id: doc.id, ...doc.data() } as Order;
   },
 
+  // Real-time listener for a single order
+  subscribeToOrder(orderId: string, callback: (order: Order | null) => void) {
+    const q = query(collection(db, ORDERS_COLLECTION), where('orderId', '==', orderId));
+    return onSnapshot(q, (snapshot) => {
+      if (snapshot.empty) {
+        callback(null);
+      } else {
+        const doc = snapshot.docs[0];
+        callback({ id: doc.id, ...doc.data() } as Order);
+      }
+    });
+  },
+
   async getUserOrders(userId: string): Promise<Order[]> {
     const q = query(
       collection(db, ORDERS_COLLECTION),
@@ -88,11 +101,27 @@ export const orderService = {
     const querySnapshot = await getDocs(q);
     const orders = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
     
-    // Sort in JavaScript instead of Firestore
     return orders.sort((a, b) => {
       const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
       const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
       return dateB.getTime() - dateA.getTime();
+    });
+  },
+
+  // Real-time listener for all user orders
+  subscribeToUserOrders(userId: string, callback: (orders: Order[]) => void) {
+    const q = query(
+      collection(db, ORDERS_COLLECTION),
+      where('userId', '==', userId)
+    );
+    
+    return onSnapshot(q, (snapshot) => {
+      const orders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
+      callback(orders.sort((a, b) => {
+        const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
+        const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);
+        return dateB.getTime() - dateA.getTime();
+      }));
     });
   },
 
@@ -101,7 +130,6 @@ export const orderService = {
     const querySnapshot = await getDocs(q);
     const orders = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
     
-    // Sort in JavaScript instead of Firestore
     return orders.sort((a, b) => {
       const dateA = a.createdAt instanceof Date ? a.createdAt : new Date(a.createdAt);
       const dateB = b.createdAt instanceof Date ? b.createdAt : new Date(b.createdAt);

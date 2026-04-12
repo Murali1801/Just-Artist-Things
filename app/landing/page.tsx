@@ -9,234 +9,203 @@ import Header from "@/components/header"
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-teal-50 to-blue-50 dark:from-slate-900 dark:via-cyan-950/30 dark:to-slate-800 overflow-hidden">
+    <div className="min-h-screen selection:bg-primary/20 selection:text-primary overflow-x-hidden">
       <Header />
 
-      {/* Hero Section */}
-      <section id="home" className="relative min-h-[90vh] flex items-center justify-center px-6 py-20">
-        {/* Decorative floating shapes */}
-        <motion.div
-          animate={{ y: [0, -30, 0], rotate: [0, 5, 0] }}
-          transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute top-20 left-10 w-72 h-72 bg-teal-200/20 dark:bg-teal-500/10 rounded-full blur-3xl"
-        />
-        <motion.div
-          animate={{ y: [0, 20, 0], rotate: [0, -5, 0] }}
-          transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 1 }}
-          className="absolute bottom-20 right-10 w-96 h-96 bg-cyan-200/20 dark:bg-cyan-500/10 rounded-full blur-3xl"
-        />
-        <motion.div
-          animate={{ y: [0, 15, 0] }}
-          transition={{ duration: 6, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-          className="absolute top-40 right-1/4 w-48 h-48 bg-blue-200/15 dark:bg-blue-500/10 rounded-full blur-2xl"
-        />
-
-        <div className="max-w-6xl w-full relative z-10">
+      {/* Hero: The Statement */}
+      <section id="home" className="relative min-h-screen flex items-center px-6 pt-20">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,var(--primary)_0%,transparent_50%)] opacity-10 pointer-events-none" />
+        
+        <div className="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
           <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-            className="text-center mb-12"
+            initial={{ opacity: 0, x: -50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 1, ease: [0.16, 1, 0.3, 1] }}
           >
-            {/* Badge */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
+              initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-teal-100/80 dark:bg-teal-900/40 backdrop-blur-sm border border-teal-200/50 dark:border-teal-700/30 text-teal-700 dark:text-teal-300 text-sm font-medium mb-8"
+              transition={{ delay: 0.2 }}
+              className="inline-flex items-center gap-3 px-4 py-1.5 rounded-full glass border-primary/20 text-primary text-[10px] uppercase tracking-[0.2em] font-bold mb-8"
             >
-              <Sparkles className="h-4 w-4" />
-              Handcrafted with Love in India
+              <Sparkles className="h-3 w-3" />
+              The Art of Handcrafting
             </motion.div>
 
-            <h1 className="text-5xl md:text-7xl font-bold text-slate-900 dark:text-white mb-6 leading-tight">
-              Handcrafted Art
+            <h1 className="text-6xl md:text-8xl font-serif font-bold text-foreground leading-[1.1] mb-8">
+              Where Art 
               <br />
-              <span className="bg-gradient-to-r from-teal-600 via-cyan-600 to-blue-600 dark:from-teal-400 dark:via-cyan-400 dark:to-blue-400 bg-clip-text text-transparent">
-                & Decor
-              </span>
+              <span className="text-primary italic">Breathes Life</span>
+              <br />
+              into Spaces
             </h1>
 
-            <p className="text-xl text-slate-600 dark:text-slate-300 max-w-2xl mx-auto mb-10 leading-relaxed">
-              Custom frames, resin art, and personalized accessories crafted with care —
-              each piece tells a unique story.
+            <p className="text-lg text-muted-foreground max-w-lg mb-12 leading-relaxed font-sans">
+              Discover a curated collection of resin art, bespoke frames, and avant-garde decor designed for those who appreciate the finer details of craftsmanship.
             </p>
+
+            <div className="flex flex-col sm:flex-row gap-6">
+              <Link href="/home">
+                <Button size="lg" className="h-16 px-10 rounded-2xl bg-primary text-primary-foreground hover:bg-primary/90 shadow-2xl shadow-primary/20 text-xs uppercase tracking-widest font-bold group">
+                  Enter The Studio
+                  <ArrowRight className="ml-3 h-4 w-4 transition-transform group-hover:translate-x-1" />
+                </Button>
+              </Link>
+              <Button
+                variant="ghost"
+                size="lg"
+                className="h-16 px-10 rounded-2xl border border-border hover:bg-muted text-xs uppercase tracking-widest font-bold"
+                onClick={() => document.getElementById('about')?.scrollIntoView({ behavior: 'smooth' })}
+              >
+                Our Philosophy
+              </Button>
+            </div>
           </motion.div>
 
+          {/* Visual Piece */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.4 }}
-            className="flex flex-col sm:flex-row gap-4 justify-center"
+            initial={{ opacity: 0, scale: 0.8, rotate: 5 }}
+            animate={{ opacity: 1, scale: 1, rotate: 0 }}
+            transition={{ duration: 1.5, ease: [0.16, 1, 0.3, 1] }}
+            className="relative perspective-1000"
           >
-            <Link href="/home">
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-                <Button size="lg" className="bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white px-10 py-6 text-base rounded-xl shadow-lg shadow-teal-500/25 hover:shadow-xl hover:shadow-teal-500/30 transition-all">
-                  Shop Now
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </motion.div>
-            </Link>
-            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-              <Button
-                size="lg"
-                variant="outline"
-                className="border-slate-300 dark:border-slate-600 bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm text-slate-700 dark:text-slate-200 hover:bg-white hover:dark:bg-slate-700 px-10 py-6 text-base rounded-xl transition-all"
-                onClick={() => {
-                  document.getElementById('about')?.scrollIntoView({ behavior: 'smooth' })
-                }}
-              >
-                Learn More
-              </Button>
+            <div className="relative z-10 rounded-[2.5rem] overflow-hidden shadow-[0_50px_100px_-20px_rgba(0,0,0,0.3)] border-8 border-white dark:border-white/5 aspect-[4/5] group">
+              <img 
+                src="/assets/revamp/hero-clock.png" 
+                alt="Signature Clock" 
+                className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-105" 
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex items-end p-12">
+                <div className="text-white">
+                  <span className="text-[10px] uppercase tracking-widest font-bold opacity-70">Signature Piece</span>
+                  <h3 className="text-2xl font-serif font-bold mt-1">Midnight Emerald Clock</h3>
+                </div>
+              </div>
+            </div>
+
+            {/* Floating Accents */}
+            <motion.div
+              animate={{ y: [0, -20, 0], rotate: [0, 5, 0] }}
+              transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+              className="absolute -top-10 -right-10 w-40 h-40 glass rounded-3xl z-20 flex items-center justify-center p-8 shadow-xl hidden lg:flex"
+            >
+              <Palette className="w-full h-full text-primary/40" />
             </motion.div>
           </motion.div>
-
-          {/* Trust indicators */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.8, delay: 0.8 }}
-            className="flex flex-wrap items-center justify-center gap-8 mt-16 text-sm text-slate-500 dark:text-slate-400"
-          >
-            {[
-              { icon: <Star className="h-4 w-4 fill-amber-400 text-amber-400" />, text: "200+ Happy Customers" },
-              { icon: <Heart className="h-4 w-4 text-rose-400" />, text: "Made with Love" },
-              { icon: <Truck className="h-4 w-4 text-teal-500" />, text: "Pan-India Delivery" },
-            ].map((item, i) => (
-              <div key={i} className="flex items-center gap-2">
-                {item.icon}
-                <span>{item.text}</span>
-              </div>
-            ))}
-          </motion.div>
         </div>
       </section>
 
-      {/* About Section */}
-      <section id="about" className="py-24 px-6 bg-white/60 dark:bg-slate-800/40 backdrop-blur-md border-y border-white/20 dark:border-slate-700/30">
-        <div className="max-w-4xl mx-auto text-center">
+      {/* Philosophy Section */}
+      <section id="about" className="py-32 px-6 bg-muted/30 relative">
+        <div className="max-w-7xl mx-auto flex flex-col items-center">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
             viewport={{ once: true }}
+            className="text-center max-w-3xl"
           >
-            <span className="inline-block text-sm font-semibold text-teal-600 dark:text-teal-400 uppercase tracking-widest mb-4">Our Story</span>
-            <h2 className="text-4xl font-bold text-slate-900 dark:text-white mb-8">
-              About Us
+            <span className="text-[10px] uppercase tracking-[0.4em] font-bold text-primary mb-6 block">Our Ethos</span>
+            <h2 className="text-4xl md:text-5xl font-serif font-bold mb-10 text-foreground">
+              Every detail is a deliberate 
+              <span className="italic block mt-2 text-muted-foreground/60">work of intention.</span>
             </h2>
-            <p className="text-lg text-slate-600 dark:text-slate-300 mb-4 leading-relaxed">
-              We create handmade art pieces, custom frames, and personalized accessories. Each item is carefully crafted to add a personal touch to your space.
+            <p className="text-lg text-muted-foreground leading-relaxed mb-8">
+              Based in the quiet town of Boisar, we began as a small artistic venture fueled by the desire to bring tangible beauty back into digital lives. We believe that handmade art is not just a purchase—it’s an investment in a story.
             </p>
-            <p className="text-lg text-slate-600 dark:text-slate-300 leading-relaxed">
-              Based in Boisar, Palghar, Maharashtra, we take pride in delivering quality handcrafted products across India.
-            </p>
+            <div className="h-px w-20 bg-primary/30 mx-auto" />
           </motion.div>
         </div>
       </section>
 
-      {/* Features */}
-      <section className="py-24 px-6">
-        <div className="max-w-6xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <span className="inline-block text-sm font-semibold text-teal-600 dark:text-teal-400 uppercase tracking-widest mb-4">Why Choose Us</span>
-            <h2 className="text-4xl font-bold text-slate-900 dark:text-white">What Makes Us Special</h2>
-          </motion.div>
-
-          <motion.div
-            className="grid grid-cols-1 md:grid-cols-3 gap-6"
-            initial="hidden"
-            whileInView="visible"
-            viewport={{ once: true }}
-            variants={{
-              hidden: { opacity: 0 },
-              visible: {
-                opacity: 1,
-                transition: { staggerChildren: 0.15 }
-              }
-            }}
-          >
-            {[
-              {
-                title: "Handcrafted",
-                description: "Every piece is made by hand with meticulous attention to detail and passion",
-                icon: <Palette className="h-7 w-7" />,
-                gradient: "from-teal-500 to-emerald-500",
-              },
-              {
-                title: "Custom Orders",
-                description: "Personalize your items with names, dates, or custom designs of your choice",
-                icon: <Shield className="h-7 w-7" />,
-                gradient: "from-cyan-500 to-blue-500",
-              },
-              {
-                title: "Pan-India Delivery",
-                description: "Fast and reliable shipping across India from Maharashtra with care",
-                icon: <Truck className="h-7 w-7" />,
-                gradient: "from-blue-500 to-indigo-500",
-              }
-            ].map((feature, index) => (
-              <motion.div
-                key={index}
-                variants={{
-                  hidden: { opacity: 0, y: 30 },
-                  visible: { opacity: 1, y: 0, transition: { duration: 0.6 } }
-                }}
-                whileHover={{ y: -6, transition: { duration: 0.2 } }}
-                className="group relative bg-white/70 dark:bg-slate-800/70 backdrop-blur-md p-8 rounded-2xl shadow-sm hover:shadow-xl transition-all duration-300 border border-white/50 dark:border-slate-700/50 text-center"
-              >
-                <div className={`inline-flex items-center justify-center w-14 h-14 rounded-xl bg-gradient-to-br ${feature.gradient} text-white mb-5 shadow-lg group-hover:scale-110 transition-transform duration-300`}>
-                  {feature.icon}
-                </div>
-                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-3">
-                  {feature.title}
-                </h3>
-                <p className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed">
-                  {feature.description}
-                </p>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section id="contact" className="py-24 px-6 relative overflow-hidden">
-        {/* Background decorations */}
-        <div className="absolute inset-0 bg-gradient-to-r from-teal-600/5 via-cyan-600/5 to-blue-600/5 dark:from-teal-600/10 dark:via-cyan-600/10 dark:to-blue-600/10" />
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          viewport={{ once: true }}
-          className="max-w-4xl mx-auto text-center relative z-10"
-        >
-          <div className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl p-12 md:p-16 rounded-3xl border border-white/30 dark:border-slate-700/30 shadow-xl">
-            <span className="inline-block text-sm font-semibold text-teal-600 dark:text-teal-400 uppercase tracking-widest mb-4">Get Started</span>
-            <h2 className="text-4xl font-bold text-slate-900 dark:text-white mb-4">
-              Ready to Order?
-            </h2>
-            <p className="text-lg text-slate-600 dark:text-slate-300 mb-10 max-w-lg mx-auto">
-              Browse our collection and contact us for custom orders via WhatsApp or Instagram.
-            </p>
-            <Link href="/home">
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="inline-block">
-                <Button size="lg" className="bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white px-10 py-6 text-base rounded-xl shadow-lg shadow-teal-500/25 hover:shadow-xl hover:shadow-teal-500/30 transition-all">
-                  View Products
-                  <ArrowRight className="ml-2 h-5 w-5" />
-                </Button>
-              </motion.div>
+      {/* Curated Works */}
+      <section className="py-32 px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col md:flex-row justify-between items-end mb-20 gap-8">
+            <div className="max-w-xl">
+              <span className="text-[10px] uppercase tracking-[0.4em] font-bold text-primary mb-4 block">Collections</span>
+              <h2 className="text-4xl font-serif font-bold">Curated Explorations</h2>
+            </div>
+            <Link href="/home" className="group flex items-center gap-2 text-xs uppercase tracking-widest font-bold text-muted-foreground hover:text-primary transition-colors">
+              Explore Catalog <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Link>
           </div>
-        </motion.div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+            {[
+              {
+                title: "The Frame Series",
+                desc: "Capturing memories in sculptural light oak and glass.",
+                img: "/assets/revamp/feature-frame.png",
+                tag: "Bespoke"
+              },
+              {
+                title: "Alchemy Coasters",
+                desc: "Functional art pieces infused with real gold-leaf textures.",
+                img: "/assets/revamp/feature-coasters.png",
+                tag: "Signature"
+              }
+            ].map((work, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 40 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ delay: i * 0.2 }}
+                viewport={{ once: true }}
+                className="group cursor-pointer"
+              >
+                <div className="relative aspect-[16/10] rounded-[2rem] overflow-hidden mb-6 border border-border">
+                  <img src={work.img} alt={work.title} className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" />
+                  <div className="absolute top-6 left-6 glass px-4 py-1.5 rounded-full text-[10px] uppercase tracking-widest font-bold">
+                    {work.tag}
+                  </div>
+                </div>
+                <h3 className="text-2xl font-serif font-bold mb-2 group-hover:text-primary transition-colors">{work.title}</h3>
+                <p className="text-muted-foreground text-sm font-sans">{work.desc}</p>
+              </motion.div>
+            ))}
+          </div>
+        </div>
       </section>
+
+      {/* Call To Action */}
+      <section id="contact" className="py-32 px-6">
+        <div className="max-w-5xl mx-auto text-center">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            className="glass-card p-16 md:p-24 rounded-[3rem] relative overflow-hidden"
+          >
+            <div className="absolute top-0 right-0 w-96 h-96 bg-primary/5 blur-[100px] -z-10" />
+            <div className="absolute bottom-0 left-0 w-96 h-96 bg-secondary/10 blur-[100px] -z-10" />
+            
+            <h2 className="text-5xl md:text-6xl font-serif font-bold mb-8">Ready to initiate </h2>
+            <h2 className="text-5xl md:text-6xl font-serif font-bold mb-10 text-primary">your commission?</h2>
+            
+            <p className="text-muted-foreground text-lg mb-12 max-w-sm mx-auto">
+              Our studio doors are always open for custom projects that challenge our craft.
+            </p>
+            
+            <Link href="/home">
+              <Button size="lg" className="h-16 px-12 rounded-2xl bg-foreground text-background hover:bg-foreground/90 text-xs uppercase tracking-widest font-bold shadow-2xl">
+                Browse The Store
+              </Button>
+            </Link>
+            
+            <div className="mt-16 flex justify-center gap-12 text-[10px] uppercase tracking-[0.3em] font-bold text-muted-foreground opacity-50">
+              <div className="flex items-center gap-2"><Truck className="h-3 w-3" /> Pan-India</div>
+              <div className="flex items-center gap-2"><Shield className="h-3 w-3" /> Secure FlowPay</div>
+              <div className="flex items-center gap-2"><Heart className="h-3 w-3" /> Artisan Made</div>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      <Footer />
+    </div>
+  )
+}
+
 
       <Footer />
     </div>

@@ -81,199 +81,186 @@ export default function Header() {
 
   return (
     <motion.header
-      className={`sticky top-0 z-50 transition-all duration-300 ${
-        isScrolled ? "bg-background/80 backdrop-blur-md shadow-sm border-b border-border" : "bg-transparent"
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+        isScrolled ? "py-3" : "py-6"
       }`}
       initial={{ y: -100 }}
       animate={{ y: 0 }}
-      transition={{ duration: 0.5 }}
+      transition={{ type: "spring", stiffness: 100, damping: 20 }}
     >
-      <nav className="max-w-7xl mx-auto px-6 py-4 md:py-6 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <img src="/logo.png" alt="Just Artist Things" className="h-8 w-8" />
-          <span className="text-2xl font-serif font-bold tracking-tight text-foreground">Just Artist Things</span>
-        </div>
+      <nav className="max-w-7xl mx-auto px-6">
+        <div className={`flex items-center justify-between px-6 py-3 rounded-2xl transition-all duration-500 ${
+          isScrolled ? "glass shadow-2xl shadow-primary/5 border-primary/10" : "bg-transparent border-transparent"
+        }`}>
+          <div className="flex items-center gap-4 cursor-pointer" onClick={() => router.push('/')}>
+            <div className="relative h-10 w-10 overflow-hidden rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20 group">
+              <img src="/logo.png" alt="Logo" className="h-7 w-7 transition-transform duration-500 group-hover:scale-110" />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-xl font-serif font-bold tracking-tight text-foreground leading-none">Just Artist Things</span>
+              <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground mt-1 font-sans">Curated Craftsmanship</span>
+            </div>
+          </div>
 
-        <div className="hidden md:flex items-center gap-6">
-          {navItems.map((item) => (
-            <a
-              key={item.name}
-              href={item.href}
-              onClick={(e) => handleNavClick(e, item.href)}
-              className="text-sm font-medium text-foreground hover:text-foreground/60 transition-colors cursor-pointer"
-            >
-              {item.name}
-            </a>
-          ))}
-          {user && (
-            <>
-              <button
-                onClick={() => router.push('/favorites')}
-                className="text-sm font-medium text-foreground hover:text-foreground/60 transition-colors cursor-pointer relative"
-              >
-                Favourites
-                {favorites.length > 0 && (
-                  <Badge className="absolute -top-2 -right-2 h-4 w-4 p-0 flex items-center justify-center text-xs">
-                    {favorites.length}
-                  </Badge>
-                )}
-              </button>
-              <button
-                onClick={() => router.push('/orders')}
-                className="text-sm font-medium text-foreground hover:text-foreground/60 transition-colors cursor-pointer"
-              >
-                Orders
-              </button>
-            </>
-          )}
-          {isAdmin && (
-            <button
-              onClick={() => router.push('/admin')}
-              className="text-sm font-medium text-foreground hover:text-foreground/60 transition-colors cursor-pointer bg-teal-100 dark:bg-teal-900/30 px-3 py-1 rounded-md text-teal-700 dark:text-teal-300"
-            >
-              Admin
-            </button>
-          )}
-        </div>
-
-        <div className="flex items-center gap-4">
-          {user && (
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              onClick={() => router.push('/cart')}
-              className="relative"
-            >
-              <ShoppingCart size={20} />
-              {getItemCount() > 0 && (
-                <Badge className="absolute -top-1 -right-1 h-5 w-5 p-0 flex items-center justify-center text-xs">
-                  {getItemCount()}
-                </Badge>
-              )}
-            </Button>
-          )}
-
-          {user ? (
-            <>
-              <div className="hidden md:flex items-center gap-3">
-                <Avatar className="h-8 w-8">
-                  <AvatarImage src={user.photoURL || ''} alt={user.displayName || 'User'} />
-                  <AvatarFallback><User size={16} /></AvatarFallback>
-                </Avatar>
-                <span className="text-sm font-medium text-foreground">{user.displayName}</span>
-              </div>
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={signOut}
-                className="hidden md:flex items-center gap-2"
-              >
-                <LogOut size={16} />
-                Logout
-              </Button>
-            </>
-          ) : (
-            <Button 
-              variant="default" 
-              size="sm" 
-              onClick={signInWithGoogle}
-              className="hidden md:flex items-center gap-2"
-            >
-              <LogIn size={16} />
-              Sign in with Google
-            </Button>
-          )}
-
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="text-foreground"
-          >
-            {mounted && (theme === "dark" ? <Sun size={20} /> : <Moon size={20} />)}
-          </Button>
-
-          <button className="md:hidden text-foreground" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
-            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
-        </div>
-      </nav>
-
-      {mobileMenuOpen && (
-        <motion.div
-          className="md:hidden bg-card border-t border-border"
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: "auto" }}
-          exit={{ opacity: 0, height: 0 }}
-        >
-          <div className="px-6 py-4 flex flex-col gap-4">
+          <div className="hidden md:flex items-center gap-8">
             {navItems.map((item) => (
               <a
                 key={item.name}
                 href={item.href}
                 onClick={(e) => handleNavClick(e, item.href)}
-                className="text-sm font-medium text-foreground cursor-pointer"
+                className="text-xs uppercase tracking-widest font-semibold text-muted-foreground hover:text-primary transition-all relative group"
               >
                 {item.name}
+                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary transition-all duration-300 group-hover:w-full" />
               </a>
             ))}
             {user && (
-              <button
-                onClick={() => router.push('/favorites')}
-                className="text-sm font-medium text-foreground cursor-pointer text-left"
-              >
-                Favourites
-              </button>
-            )}
-            {user && (
-              <button
-                onClick={() => router.push('/orders')}
-                className="text-sm font-medium text-foreground cursor-pointer text-left"
-              >
-                Orders
-              </button>
+              <>
+                <button
+                  onClick={() => router.push('/favorites')}
+                  className="text-xs uppercase tracking-widest font-semibold text-muted-foreground hover:text-primary transition-all relative group"
+                >
+                  Favourites
+                  {favorites.length > 0 && (
+                    <span className="absolute -top-2 -right-3 h-4 w-4 bg-primary text-[10px] text-primary-foreground rounded-full flex items-center justify-center font-bold">
+                      {favorites.length}
+                    </span>
+                  )}
+                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary transition-all duration-300 group-hover:w-full" />
+                </button>
+                <button
+                  onClick={() => router.push('/orders')}
+                  className="text-xs uppercase tracking-widest font-semibold text-muted-foreground hover:text-primary transition-all relative group shadow-sm"
+                >
+                  Track Orders
+                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-primary transition-all duration-300 group-hover:w-full" />
+                </button>
+              </>
             )}
             {isAdmin && (
               <button
                 onClick={() => router.push('/admin')}
-                className="text-sm font-medium text-foreground cursor-pointer text-left"
+                className="text-xs uppercase tracking-widest font-bold px-3 py-1 bg-primary/10 text-primary rounded-full hover:bg-primary/20 transition-all"
               >
-                Admin
+                Studio Panel
               </button>
             )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              className="text-muted-foreground hover:text-primary hover:bg-primary/5 transition-colors rounded-xl"
+            >
+              {mounted && (theme === "dark" ? <Sun size={18} /> : <Moon size={18} />)}
+            </Button>
+
+            <div className="h-6 w-[1px] bg-border mx-1 hidden md:block" />
+
+            {user && (
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => router.push('/cart')}
+                className="relative text-muted-foreground hover:text-primary hover:bg-primary/5 rounded-xl"
+              >
+                <ShoppingCart size={18} />
+                {getItemCount() > 0 && (
+                  <span className="absolute -top-1 -right-1 h-4 w-4 bg-primary text-[10px] text-primary-foreground rounded-full flex items-center justify-center font-bold border-2 border-background">
+                    {getItemCount()}
+                  </span>
+                )}
+              </Button>
+            )}
+
             {user ? (
-              <>
-                <div className="flex items-center gap-3 py-2 border-t border-border">
-                  <Avatar className="h-8 w-8">
-                    <AvatarImage src={user.photoURL || ''} alt={user.displayName || 'User'} />
-                    <AvatarFallback><User size={16} /></AvatarFallback>
-                  </Avatar>
-                  <span className="text-sm font-medium text-foreground">{user.displayName}</span>
-                </div>
+              <div className="flex items-center gap-2 pl-2">
+                <Avatar className="h-8 w-8 border border-primary/20">
+                  <AvatarImage src={user.photoURL || ''} alt={user.displayName || 'User'} />
+                  <AvatarFallback><User size={14} /></AvatarFallback>
+                </Avatar>
                 <Button 
-                  variant="outline" 
+                  variant="ghost" 
                   size="sm" 
                   onClick={signOut}
-                  className="w-full"
+                  className="hidden md:flex text-xs font-bold hover:text-destructive hover:bg-destructive/5"
                 >
-                  <LogOut size={16} className="mr-2" />
-                  Logout
+                  <LogOut size={14} className="mr-2" />
+                  Exit
                 </Button>
-              </>
+              </div>
             ) : (
               <Button 
                 variant="default" 
                 size="sm" 
                 onClick={signInWithGoogle}
-                className="w-full"
+                className="hidden md:flex items-center gap-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl px-5 shadow-xl shadow-primary/20"
               >
-                <LogIn size={16} className="mr-2" />
-                Sign in with Google
+                <LogIn size={14} />
+                Sign In
               </Button>
             )}
+
+            <button className="md:hidden ml-2 text-foreground p-2" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+              {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
           </div>
-        </motion.div>
-      )}
+        </div>
+      </nav>
+
+      {/* Mobile Menu */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            className="md:hidden fixed inset-x-6 top-24 z-50 overflow-hidden"
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            transition={{ type: "spring", duration: 0.5 }}
+          >
+            <div className="glass-card shadow-2xl p-8 rounded-3xl">
+              <div className="flex flex-col gap-6">
+                {navItems.map((item) => (
+                  <a
+                    key={item.name}
+                    href={item.href}
+                    onClick={(e) => handleNavClick(e, item.href)}
+                    className="text-lg font-bold text-foreground"
+                  >
+                    {item.name}
+                  </a>
+                ))}
+                {user && (
+                  <>
+                    <button onClick={() => {router.push('/favorites'); setMobileMenuOpen(false)}} className="text-lg font-bold text-foreground text-left">Favourites</button>
+                    <button onClick={() => {router.push('/orders'); setMobileMenuOpen(false)}} className="text-lg font-bold text-foreground text-left">Orders</button>
+                  </>
+                )}
+                {isAdmin && (
+                  <button onClick={() => {router.push('/admin'); setMobileMenuOpen(false)}} className="text-lg font-bold text-primary text-left">Studio Panel</button>
+                )}
+                
+                <div className="h-px bg-border my-2" />
+                
+                {user ? (
+                  <Button variant="outline" className="w-full justify-start rounded-xl py-6" onClick={signOut}>
+                    <LogOut size={18} className="mr-3 text-destructive" />
+                    Sign Out
+                  </Button>
+                ) : (
+                  <Button className="w-full justify-start rounded-xl py-6" onClick={signInWithGoogle}>
+                    <LogIn size={18} className="mr-3" />
+                    Sign In with Google
+                  </Button>
+                )}
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.header>
+
   )
 }
