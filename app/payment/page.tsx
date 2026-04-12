@@ -60,7 +60,26 @@ export default function PaymentPage() {
         },
         body: JSON.stringify({
           amount: checkoutData.totalAmount,
-          ...(merchantId ? { merchant_id: merchantId } : {})
+          ...(merchantId ? { merchant_id: merchantId } : {}),
+          customer_details: {
+            name: user!.displayName || checkoutData.shippingAddress.fullName,
+            email: user!.email,
+            phone: checkoutData.shippingAddress.phone
+          },
+          shipping_address: {
+            full_name: checkoutData.shippingAddress.fullName,
+            address_line_1: checkoutData.shippingAddress.addressLine1,
+            address_line_2: checkoutData.shippingAddress.addressLine2,
+            city: checkoutData.shippingAddress.city,
+            state: checkoutData.shippingAddress.state,
+            pincode: checkoutData.shippingAddress.pincode
+          },
+          items: checkoutData.items.map((item: any) => ({
+            name: item.name,
+            quantity: item.quantity,
+            price: item.price,
+            image: item.image
+          }))
         }),
       })
 
