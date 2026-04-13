@@ -1,6 +1,13 @@
-import { collection, doc, setDoc, getDoc, getDocs, query, where, orderBy, addDoc, Timestamp, onSnapshot } from 'firebase/firestore';
+import { collection, doc, setDoc, getDoc, getDocs, query, where, orderBy, addDoc, Timestamp, onSnapshot, Firestore } from 'firebase/firestore';
 import { db } from './config';
 import { productService } from './productService';
+
+/** Asserts that Firestore is initialized — throws a clear error if not. */
+function getDb(): Firestore {
+  if (!db) throw new Error('[orderService] Firebase Firestore is not initialized.');
+  return db;
+}
+
 
 export interface ShippingAddress {
   fullName: string;
@@ -43,7 +50,7 @@ export const orderService = {
   async createOrder(orderData: Omit<Order, 'id' | 'orderId' | 'createdAt'>): Promise<string> {
     const orderId = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
     
-    // Check stock availability for all items
+    // Check stock availability for all items (read-only, no deduction yet)
     for (const item of orderData.items) {
       const hasStock = await productService.checkStock(item.productId, item.quantity);
       if (!hasStock) {
@@ -57,21 +64,15 @@ export const orderService = {
       createdAt: new Date(),
     };
 
-    // Create the order
-    const docRef = await addDoc(collection(db, ORDERS_COLLECTION), order);
-    
-    // Update stock for each item (only if payment is successful)
-    if (orderData.paymentStatus.toLowerCase().includes('paid')) {
-      for (const item of orderData.items) {
-        await productService.updateStock(item.productId, item.quantity);
-      }
-    }
+    // Create the order — stock is NOT deducted here.
+    // Stock deduction is deferred until payment is confirmed (see confirmAndDeductStock).
+    const docRef = await addDoc(collection(getDb(), ORDERS_COLLECTION), order);
     
     return orderId;
   },
 
   async getOrderById(orderId: string): Promise<Order | null> {
-    const q = query(collection(db, ORDERS_COLLECTION), where('orderId', '==', orderId));
+    const q = query(collection(getDb(), ORDERS_COLLECTION), where('orderId', '==', orderId));
     const querySnapshot = await getDocs(q);
     
     if (querySnapshot.empty) return null;
@@ -81,13 +82,35 @@ export const orderService = {
   },
 
   async updateOrderStatus(localId: string, updates: Partial<Order>): Promise<void> {
-    const ref = doc(db, ORDERS_COLLECTION, localId);
+    const ref = doc(getDb(), ORDERS_COLLECTION, localId);
     await setDoc(ref, updates, { merge: true });
+  },
+
+  /**
+   * Called after FlowPay confirms payment.
+   * Updates payment/order status and deducts stock atomically.
+   */
+  async confirmAndDeductStock(
+    localDocId: string,
+    items: OrderItem[],
+    updates: Partial<Order>
+  ): Promise<void> {
+    // Update order doc
+    const ref = doc(getDb(), ORDERS_COLLECTION, localDocId);
+    await setDoc(ref, updates, { merge: true });
+    // Deduct stock for each confirmed item
+    for (const item of items) {
+      try {
+        await productService.updateStock(item.productId, item.quantity);
+      } catch (e) {
+        console.error(`[Stock] Failed to deduct stock for ${item.name}:`, e);
+      }
+    }
   },
 
   // Real-time listener for a single order
   subscribeToOrder(orderId: string, callback: (order: Order | null) => void) {
-    const q = query(collection(db, ORDERS_COLLECTION), where('orderId', '==', orderId));
+    const q = query(collection(getDb(), ORDERS_COLLECTION), where('orderId', '==', orderId));
     return onSnapshot(q, (snapshot) => {
       if (snapshot.empty) {
         callback(null);
@@ -100,7 +123,7 @@ export const orderService = {
 
   async getUserOrders(userId: string): Promise<Order[]> {
     const q = query(
-      collection(db, ORDERS_COLLECTION),
+      collection(getDb(), ORDERS_COLLECTION),
       where('userId', '==', userId)
     );
     
@@ -117,7 +140,7 @@ export const orderService = {
   // Real-time listener for all user orders
   subscribeToUserOrders(userId: string, callback: (orders: Order[]) => void) {
     const q = query(
-      collection(db, ORDERS_COLLECTION),
+      collection(getDb(), ORDERS_COLLECTION),
       where('userId', '==', userId)
     );
     
@@ -132,7 +155,7 @@ export const orderService = {
   },
 
   async getAllOrders(): Promise<Order[]> {
-    const q = query(collection(db, ORDERS_COLLECTION));
+    const q = query(collection(getDb(), ORDERS_COLLECTION));
     const querySnapshot = await getDocs(q);
     const orders = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Order));
     
