@@ -16,6 +16,7 @@ import { useAuth } from "@/contexts/AuthContext"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
 import { toast } from "sonner"
+import { orderService } from "@/lib/firebase/orderService"
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Form = {
@@ -163,15 +164,38 @@ export default function CheckoutPage() {
         throw new Error(json.error || `Payment session failed (HTTP ${res.status})`)
       }
 
-      // ── Save order info for /orders sync (non-blocking, fire & forget) ────
+      // ── Create local pending order in Firestore (Acts as the Bridge) ───────
       try {
-        sessionStorage.setItem("pendingPayment", JSON.stringify({
-          flowPayOrderId: json.order_id,
-          amount:  getTotalAmount(),
-          items:   cart.items,
-          address: form,
-        }))
-      } catch { /* ignored */ }
+        await orderService.createOrder({
+          userId: user.uid,
+          userEmail: user.email || "guest@example.com",
+          userName: form.fullName,
+          items: cart.items.map(i => ({
+             productId: i.productId,
+             name: i.name,
+             image: i.image || "",
+             price: i.price,
+             quantity: i.quantity,
+             category: i.category || "uncategorized",
+          })),
+          totalAmount: getTotalAmount(),
+          shippingAddress: {
+            fullName: form.fullName,
+            phone: form.phone,
+            addressLine1: form.addressLine1,
+            addressLine2: form.addressLine2,
+            city: form.city,
+            state: form.state,
+            pincode: form.pincode,
+          },
+          paymentMethod: "FlowPay",
+          paymentStatus: "Pending (FlowPay)",
+          orderStatus: "Pending",
+          externalOrderId: json.order_id,
+        })
+      } catch (err) {
+        console.error("[Checkout] Failed to create pending order in Firestore", err)
+      }
 
       // ── Cart cleared only after payment confirmed (in /orders page) ───────
       // DO NOT clearCart() here.
