@@ -27,14 +27,21 @@ const EMPTY: Form = { fullName:"", phone:"", addressLine1:"", addressLine2:"", c
 
 function validate(f: Form): Record<string, string> {
   const e: Record<string, string> = {}
-  if (!f.fullName.trim())     e.fullName     = "Full name is required"
-  if (!f.phone.trim())        e.phone        = "Phone is required"
-  else if (!/^\d{10}$/.test(f.phone)) e.phone = "Enter a valid 10-digit number"
+  
+  if (!f.fullName.trim()) e.fullName = "Full name is required"
+  
+  const cleanPhone = f.phone.replace(/\D/g, "")
+  if (!f.phone.trim()) e.phone = "Phone is required"
+  else if (cleanPhone.length !== 10) e.phone = "Enter a valid 10-digit number"
+  
   if (!f.addressLine1.trim()) e.addressLine1 = "Address line 1 is required"
   if (!f.city.trim())         e.city         = "City is required"
   if (!f.state.trim())        e.state        = "State is required"
-  if (!f.pincode.trim())      e.pincode      = "Pincode is required"
-  else if (!/^\d{6}$/.test(f.pincode)) e.pincode = "Enter a valid 6-digit pincode"
+  
+  const cleanPin = f.pincode.replace(/\D/g, "")
+  if (!f.pincode.trim()) e.pincode = "Pincode is required"
+  else if (cleanPin.length !== 6) e.pincode = "Enter a valid 6-digit pincode"
+  
   return e
 }
 
@@ -135,8 +142,9 @@ export default function CheckoutPage() {
   if (!user || !cart || cart.items.length === 0) return null
   const total = getTotalAmount()
 
-  const Field = ({ name, label, placeholder, icon }: {
-    name: keyof Form; label: string; placeholder?: string; icon?: React.ReactNode
+  const Field = ({ name, label, placeholder, icon, type = "text", inputMode, autoComplete }: {
+    name: keyof Form; label: string; placeholder?: string; icon?: React.ReactNode; 
+    type?: string; inputMode?: "text" | "tel" | "numeric"; autoComplete?: string
   }) => (
     <div className="space-y-1.5">
       <Label htmlFor={name} className="text-sm font-semibold flex items-center gap-1.5 text-foreground/80">
@@ -146,6 +154,9 @@ export default function CheckoutPage() {
         id={name} name={name} value={form[name]}
         onChange={handleChange} placeholder={placeholder}
         disabled={processing}
+        type={type}
+        inputMode={inputMode}
+        autoComplete={autoComplete}
         className={`h-11 transition-all ${errors[name]
           ? "border-red-400 ring-1 ring-red-300 focus:ring-red-400"
           : "focus:border-teal-500 focus:ring-teal-200"}`}
@@ -227,25 +238,25 @@ export default function CheckoutPage() {
                     </h2>
                     <div className="grid sm:grid-cols-2 gap-x-4 gap-y-4">
                       <div className="sm:col-span-2">
-                        <Field name="fullName"     label="Full Name *"         placeholder="As on courier label"         icon={<User size={12} className="text-muted-foreground"/>} />
+                        <Field name="fullName"     label="Full Name *"         placeholder="As on courier label"         icon={<User size={12} className="text-muted-foreground"/>} autoComplete="name" />
                       </div>
                       <div className="sm:col-span-2">
-                        <Field name="phone"        label="Mobile Number *"     placeholder="10-digit number"             icon={<Phone size={12} className="text-muted-foreground"/>} />
+                        <Field name="phone"        label="Mobile Number *"     placeholder="10-digit number"             icon={<Phone size={12} className="text-muted-foreground"/>} type="tel" inputMode="tel" autoComplete="tel" />
                       </div>
                       <div className="sm:col-span-2">
-                        <Field name="addressLine1" label="Address Line 1 *"    placeholder="House No., Building, Street" icon={<Home size={12} className="text-muted-foreground"/>} />
+                        <Field name="addressLine1" label="Address Line 1 *"    placeholder="House No., Building, Street" icon={<Home size={12} className="text-muted-foreground"/>} autoComplete="address-line1" />
                       </div>
                       <div className="sm:col-span-2">
-                        <Field name="addressLine2" label="Address Line 2"      placeholder="Area, Colony, Landmark"      icon={<Building2 size={12} className="text-muted-foreground"/>} />
+                        <Field name="addressLine2" label="Address Line 2 (Optional)"      placeholder="Area, Colony, Landmark"      icon={<Building2 size={12} className="text-muted-foreground"/>} autoComplete="address-line2" />
                       </div>
                       <div>
-                        <Field name="city"     label="City *"    placeholder="Mumbai" />
+                        <Field name="city"     label="City *"    placeholder="Mumbai" autoComplete="address-level2" />
                       </div>
                       <div>
-                        <Field name="state"    label="State *"   placeholder="Maharashtra" />
+                        <Field name="state"    label="State *"   placeholder="Maharashtra" autoComplete="address-level1" />
                       </div>
                       <div className="sm:col-span-2">
-                        <Field name="pincode"  label="Pincode *" placeholder="6-digit PIN" />
+                        <Field name="pincode"  label="Pincode *" placeholder="6-digit PIN" type="text" inputMode="numeric" autoComplete="postal-code" />
                       </div>
                     </div>
                   </div>
