@@ -2,378 +2,332 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { motion } from "framer-motion"
-import { ArrowLeft, CreditCard, Smartphone, AlertTriangle, ShieldCheck } from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
+import {
+  ArrowLeft, CheckCircle, Loader2, ShieldCheck,
+  MapPin, Phone, User, Home, Building, AlertTriangle
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Separator } from "@/components/ui/separator"
-
 import { useCart } from "@/contexts/CartContext"
 import { useAuth } from "@/contexts/AuthContext"
-import { productService } from "@/lib/firebase/productService"
-import { StockStatus } from "@/components/stock-status"
 import Header from "@/components/header"
 import Footer from "@/components/footer"
 import { toast } from "sonner"
 
+// ─── FlowPay config ─────────────────────────────────────────────────────────
+const FP_API    = (process.env.NEXT_PUBLIC_FLOWPAY_API_URL    || "https://flow-pay-api.vercel.app").replace(/\/$/, "")
+const FP_WEB    = (process.env.NEXT_PUBLIC_FLOWPAY_FRONTEND_URL || "https://flow-pay-self.vercel.app").replace(/\/$/, "")
+const FP_KEY    = process.env.NEXT_PUBLIC_FLOWPAY_API_KEY    || ""
+const FP_MID    = process.env.NEXT_PUBLIC_FLOWPAY_MERCHANT_ID || ""
+const SITE_URL  = (process.env.NEXT_PUBLIC_SITE_URL           || "").replace(/\/$/, "")
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+type FormData = {
+  fullName: string; phone: string
+  addressLine1: string; addressLine2: string
+  city: string; state: string; pincode: string
+}
+const EMPTY_FORM: FormData = { fullName:"", phone:"", addressLine1:"", addressLine2:"", city:"", state:"", pincode:"" }
+
+function validate(f: FormData): Record<string, string> {
+  const e: Record<string, string> = {}
+  if (!f.fullName.trim())     e.fullName     = "Full name is required"
+  if (!f.phone.trim())        e.phone        = "Phone number is required"
+  else if (!/^\d{10}$/.test(f.phone)) e.phone = "Enter a valid 10-digit number"
+  if (!f.addressLine1.trim()) e.addressLine1 = "Address line 1 is required"
+  if (!f.city.trim())         e.city         = "City is required"
+  if (!f.state.trim())        e.state        = "State is required"
+  if (!f.pincode.trim())      e.pincode      = "Pincode is required"
+  else if (!/^\d{6}$/.test(f.pincode)) e.pincode = "Enter a valid 6-digit pincode"
+  return e
+}
+
+// ─── Main component ──────────────────────────────────────────────────────────
 export default function CheckoutPage() {
   const router = useRouter()
-  const { user } = useAuth()
-  const { cart, getTotalAmount } = useCart()
+  const { user }                      = useAuth()
+  const { cart, getTotalAmount, clearCart } = useCart()
+  const [form, setForm]               = useState<FormData>(EMPTY_FORM)
+  const [errors, setErrors]           = useState<Record<string, string>>({})
+  const [step, setStep]               = useState<"form" | "processing" | "done">("form")
+  const [statusMsg, setStatusMsg]     = useState("")
 
-  const [formData, setFormData] = useState({
-    fullName: "",
-    phone: "",
-    addressLine1: "",
-    addressLine2: "",
-    city: "",
-    state: "",
-    pincode: "",
-  })
-
-  const [paymentMethod, setPaymentMethod] = useState("flowpay")
-  const [errors, setErrors] = useState<Record<string, string>>({})
-  const [stockInfo, setStockInfo] = useState<Record<string, number>>({})
-  const [stockValidation, setStockValidation] = useState({ isValid: true, issues: [] as string[] })
-
-  // User and cart validation effect
   useEffect(() => {
-    if (!user) {
-      router.push('/home')
-      return
-    }
-    if (!cart || cart.items.length === 0) {
-      router.push('/cart')
-      return
-    }
+    if (!user) { router.push("/home"); return }
+    if (!cart || cart.items.length === 0) { router.push("/cart"); return }
   }, [user, cart, router])
 
-  useEffect(() => {
-    const validateStock = async () => {
-      if (!cart?.items.length) return
-      
-      try {
-        const stockData: Record<string, number> = {}
-        const issues: string[] = []
-        
-        await Promise.all(
-          cart.items.map(async (item) => {
-            const product = await productService.getProductById(item.productId)
-            const currentStock = product?.stock || 0
-            stockData[item.productId] = currentStock
-            
-            if (currentStock === 0) {
-              issues.push(`${item.name} is out of stock`)
-            } else if (item.quantity > currentStock) {
-              issues.push(`${item.name}: Only ${currentStock} available, but ${item.quantity} in cart`)
-            }
-          })
-        )
-        
-        setStockInfo(stockData)
-        setStockValidation({
-          isValid: issues.length === 0,
-          issues
-        })
-      } catch (error) {
-        console.error('Error validating stock:', error)
-        toast.error('Failed to validate stock. Please try again.')
-      }
-    }
+  const field = (name: keyof FormData, label: string, placeholder = "", icon?: React.ReactNode) => (
+    <div className="space-y-1">
+      <Label htmlFor={name} className="text-sm font-semibold flex items-center gap-1.5">
+        {icon}{label}
+      </Label>
+      <Input
+        id={name}
+        name={name}
+        value={form[name]}
+        onChange={e => {
+          setForm(p => ({ ...p, [e.target.name]: e.target.value }))
+          if (errors[name]) setErrors(p => { const n = {...p}; delete n[name]; return n })
+        }}
+        placeholder={placeholder}
+        className={errors[name] ? "border-destructive ring-1 ring-destructive" : ""}
+        disabled={step !== "form"}
+        autoComplete={name === "phone" ? "tel" : name === "pincode" ? "postal-code" : "on"}
+      />
+      {errors[name] && (
+        <p className="text-xs font-medium text-destructive flex items-center gap-1">
+          <AlertTriangle size={11} />{errors[name]}
+        </p>
+      )}
+    </div>
+  )
 
-    validateStock()
-  }, [cart?.items])
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: "" }))
-    }
-  }
-
-  const validateForm = () => {
-    const newErrors: Record<string, string> = {}
-
-    if (!formData.fullName.trim()) newErrors.fullName = "Full name is required"
-    if (!formData.phone.trim()) newErrors.phone = "Phone number is required"
-    else if (!/^\d{10}$/.test(formData.phone)) newErrors.phone = "Enter valid 10-digit phone number"
-    if (!formData.addressLine1.trim()) newErrors.addressLine1 = "Address is required"
-    if (!formData.city.trim()) newErrors.city = "City is required"
-    if (!formData.state.trim()) newErrors.state = "State is required"
-    if (!formData.pincode.trim()) newErrors.pincode = "Pincode is required"
-    else if (!/^\d{6}$/.test(formData.pincode)) newErrors.pincode = "Enter valid 6-digit pincode"
-
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handlePay = async (e: React.FormEvent) => {
     e.preventDefault()
-    
-    // Validate stock first
-    if (!stockValidation.isValid) {
-      toast.error('Please resolve stock issues before proceeding')
-      return
-    }
-    
-    if (!validateForm()) {
-      toast.error("Please fill all required fields correctly")
+    const errs = validate(form)
+    if (Object.keys(errs).length) {
+      setErrors(errs)
+      toast.error("Please fix the errors before continuing.")
       return
     }
 
-    // Store checkout data in sessionStorage
-    sessionStorage.setItem('checkoutData', JSON.stringify({
-      shippingAddress: formData,
-      paymentMethod: 'flowpay',
-      items: cart?.items,
-      totalAmount: getTotalAmount()
-    }))
+    setStep("processing")
+    setStatusMsg("Creating your secure payment session…")
 
-    // Navigate to payment page
-    router.push('/payment')
+    // ── Build exact payload for FlowPay ──────────────────────────────────────
+    const total = getTotalAmount()
+    const headers: Record<string, string> = { "Content-Type": "application/json" }
+    if (FP_KEY) headers["X-API-Key"] = FP_KEY
+
+    const payload: Record<string, unknown> = {
+      amount: total,                            // number, e.g. 1599
+      customer_details: {
+        name:  form.fullName,                   // exact shipping name — NOT user.displayName
+        email: user!.email ?? "",
+        phone: form.phone,                      // 10-digit
+      },
+      shipping_address: {
+        full_name:      form.fullName,
+        address_line_1: form.addressLine1,
+        ...(form.addressLine2.trim() ? { address_line_2: form.addressLine2.trim() } : {}),
+        city:    form.city,
+        state:   form.state,
+        pincode: form.pincode,
+      },
+      items: (cart!.items ?? []).map(i => ({
+        name:     i.name,
+        quantity: i.quantity,
+        price:    i.price,
+        image:    i.image ?? "",
+      })),
+    }
+    if (FP_MID) payload.merchant_id = FP_MID
+    if (SITE_URL) payload.return_url = `${SITE_URL}/orders`
+
+    // Debug log — visible in Vercel function logs
+    console.log("[Checkout] POST to FlowPay →", JSON.stringify(payload, null, 2))
+
+    let flowPayOrderId: string
+
+    try {
+      const res = await fetch(`${FP_API}/api/checkout`, {
+        method:  "POST",
+        headers,
+        body:    JSON.stringify(payload),
+      })
+
+      const json = await res.json()
+      console.log("[Checkout] FlowPay response →", JSON.stringify(json))
+
+      if (!res.ok) {
+        const detail = typeof json?.detail === "string"
+          ? json.detail
+          : JSON.stringify(json?.detail ?? json)
+        throw new Error(detail || `HTTP ${res.status} from FlowPay`)
+      }
+
+      if (!json?.order_id) throw new Error("FlowPay did not return an order_id")
+      flowPayOrderId = json.order_id as string
+
+    } catch (err) {
+      console.error("[Checkout] FlowPay API error:", err)
+      toast.error(err instanceof Error ? err.message : "Could not reach payment server. Please try again.")
+      setStep("form")
+      return
+    }
+
+    // ── FlowPay order created. Redirect immediately. ──────────────────────────
+    // Cart & local order are cleared AFTER payment is confirmed (see /orders page).
+    setStatusMsg("Redirecting to secure payment gateway…")
+    setStep("done")
+
+    // Store the FlowPay order ID + shipping data so /orders can sync later
+    try {
+      sessionStorage.setItem("pendingFlowPayOrder", JSON.stringify({
+        flowPayOrderId,
+        shippingAddress: form,
+        amount: total,
+        items: cart!.items,
+      }))
+    } catch { /* ignored */ }
+
+    // Hard navigation — opens the FlowPay checkout for this exact new order
+    window.location.href = `${FP_WEB}/pay/${flowPayOrderId}`
   }
 
-  if (!user || !cart || cart.items.length === 0) {
-    return null
-  }
+  if (!user || !cart || cart.items.length === 0) return null
+
+  const total = getTotalAmount()
+  const items = cart.items
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-teal-50 to-blue-50 dark:from-slate-900 dark:via-cyan-950/30 dark:to-slate-800">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-cyan-50/30 to-teal-50/20 dark:from-slate-900 dark:via-cyan-950/20 dark:to-slate-900">
       <Header />
-      
-      <div className="max-w-7xl mx-auto px-6 py-12">
-        <Button
-          variant="ghost"
-          onClick={() => router.push('/cart')}
-          className="mb-6"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Cart
-        </Button>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <h1 className="text-4xl font-serif font-bold mb-8">Checkout</h1>
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10">
+        {step === "form" && (
+          <Button variant="ghost" onClick={() => router.push("/cart")} className="mb-6 -ml-2">
+            <ArrowLeft className="mr-2 h-4 w-4" /> Back to Cart
+          </Button>
+        )}
 
-          <div className="grid lg:grid-cols-3 gap-8">
-            {/* Stock Issues Alert */}
-            {!stockValidation.isValid && (
-              <div className="lg:col-span-3 mb-6">
-                <Card className="p-4 border-red-200 bg-red-50">
-                  <div className="flex items-start gap-3">
-                    <AlertTriangle className="h-5 w-5 text-red-600 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <h3 className="font-semibold text-red-800 mb-2">Stock Issues Found</h3>
-                      <ul className="space-y-1">
-                        {stockValidation.issues.map((issue, index) => (
-                          <li key={index} className="text-sm text-red-700">• {issue}</li>
-                        ))}
-                      </ul>
-                      <p className="text-sm text-red-600 mt-2">
-                        Please return to your cart to fix these issues before proceeding.
-                      </p>
-                      <Button 
-                        onClick={() => router.push('/cart')} 
-                        variant="outline" 
-                        size="sm" 
-                        className="mt-3 border-red-300 text-red-700 hover:bg-red-100"
-                      >
-                        Go to Cart
-                      </Button>
+        <h1 className="text-3xl font-serif font-bold mb-8">Checkout</h1>
+
+        <AnimatePresence mode="wait">
+          {step !== "form" ? (
+            /* ── Processing / Done overlay ── */
+            <motion.div
+              key="processing"
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex flex-col items-center justify-center h-72 text-center gap-4"
+            >
+              {step === "done" ? (
+                <CheckCircle className="h-16 w-16 text-primary animate-pulse" />
+              ) : (
+                <Loader2 className="h-16 w-16 text-primary animate-spin" />
+              )}
+              <p className="text-xl font-semibold">{statusMsg}</p>
+              <p className="text-sm text-muted-foreground max-w-xs">
+                {step === "done"
+                  ? "You will be taken to FlowPay's secure gateway. Do not close this tab."
+                  : "Please wait while we connect to the payment server…"}
+              </p>
+            </motion.div>
+          ) : (
+            <motion.form
+              key="form"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              onSubmit={handlePay}
+            >
+              <div className="grid lg:grid-cols-5 gap-8">
+                {/* ── Left: Shipping form ── */}
+                <div className="lg:col-span-3 space-y-6">
+                  <div className="bg-white dark:bg-slate-800/60 rounded-2xl border border-border/60 shadow-sm p-6">
+                    <h2 className="text-lg font-bold mb-5 flex items-center gap-2">
+                      <MapPin size={18} className="text-primary" /> Shipping Address
+                    </h2>
+                    <div className="grid sm:grid-cols-2 gap-4">
+                      <div className="sm:col-span-2">
+                        {field("fullName", "Full Name *", "As on courier label", <User size={13} className="text-muted-foreground"/>)}
+                      </div>
+                      <div className="sm:col-span-2">
+                        {field("phone", "Mobile Number *", "10-digit number", <Phone size={13} className="text-muted-foreground"/>)}
+                      </div>
+                      <div className="sm:col-span-2">
+                        {field("addressLine1", "Address Line 1 *", "House No., Building, Street", <Home size={13} className="text-muted-foreground"/>)}
+                      </div>
+                      <div className="sm:col-span-2">
+                        {field("addressLine2", "Address Line 2 (optional)", "Area, Colony, Landmark", <Building size={13} className="text-muted-foreground"/>)}
+                      </div>
+                      {field("city",    "City *",    "e.g. Mumbai")}
+                      {field("state",   "State *",   "e.g. Maharashtra")}
+                      <div className="sm:col-span-2">
+                        {field("pincode", "Pincode *", "6-digit PIN code")}
+                      </div>
                     </div>
                   </div>
-                </Card>
+
+                  {/* ── FlowPay pill ── */}
+                  <div className="bg-white dark:bg-slate-800/60 rounded-2xl border border-primary/20 shadow-sm p-5">
+                    <div className="flex items-start gap-3 mb-4">
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <ShieldCheck size={20} className="text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-bold">FlowPay Secure Checkout</p>
+                        <p className="text-xs text-muted-foreground">UPI · QR · Scan with any app</p>
+                      </div>
+                    </div>
+                    <ul className="space-y-1.5 text-sm text-muted-foreground">
+                      {["100% Encrypted & Secure", "Scan QR with GPay, PhonePe, Paytm, BHIM", "Order confirmed only after payment clears", "Cart cleared only after payment is verified"].map(t => (
+                        <li key={t} className="flex items-center gap-2">
+                          <CheckCircle size={13} className="text-green-500 flex-shrink-0" />{t}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+
+                {/* ── Right: Order summary ── */}
+                <div className="lg:col-span-2">
+                  <div className="bg-white dark:bg-slate-800/60 rounded-2xl border border-border/60 shadow-sm p-6 sticky top-24">
+                    <h2 className="text-lg font-bold mb-4">Order Summary</h2>
+
+                    <div className="space-y-3 mb-4 max-h-64 overflow-y-auto pr-1">
+                      {items.map(item => (
+                        <div key={item.id} className="flex gap-3">
+                          <div className="w-14 h-14 rounded-xl overflow-hidden bg-muted flex-shrink-0">
+                            <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-semibold truncate">{item.name}</p>
+                            <p className="text-xs text-muted-foreground">Qty: {item.quantity}</p>
+                            <p className="text-sm font-bold text-primary">₹{(item.price * item.quantity).toFixed(2)}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <Separator className="my-3" />
+
+                    <div className="space-y-1.5 text-sm mb-4">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Subtotal</span>
+                        <span className="font-medium">₹{total.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Shipping</span>
+                        <span className="font-medium text-green-600">FREE</span>
+                      </div>
+                      <Separator className="my-2" />
+                      <div className="flex justify-between text-base font-bold">
+                        <span>Total</span>
+                        <span>₹{total.toFixed(2)}</span>
+                      </div>
+                    </div>
+
+                    <Button type="submit" size="lg" className="w-full h-12 text-base font-bold shadow-lg shadow-primary/20">
+                      Pay ₹{total.toFixed(2)} via FlowPay
+                    </Button>
+                    <p className="text-[10px] text-muted-foreground text-center mt-3 leading-relaxed">
+                      You will be redirected to FlowPay's secure gateway.<br/>
+                      Your cart is cleared <strong>only after payment is confirmed</strong>.
+                    </p>
+                  </div>
+                </div>
               </div>
-            )}
-
-            {/* Checkout Form */}
-            <div className="lg:col-span-2">
-              <form onSubmit={handleSubmit}>
-                <Card className="p-6 mb-6">
-                  <h2 className="text-xl font-bold mb-4">Shipping Address</h2>
-                  
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="fullName">Full Name *</Label>
-                      <Input
-                        id="fullName"
-                        name="fullName"
-                        value={formData.fullName}
-                        onChange={handleInputChange}
-                        className={errors.fullName ? "border-red-500" : ""}
-                      />
-                      {errors.fullName && <p className="text-red-500 text-sm mt-1">{errors.fullName}</p>}
-                    </div>
-
-                    <div>
-                      <Label htmlFor="phone">Phone Number *</Label>
-                      <Input
-                        id="phone"
-                        name="phone"
-                        value={formData.phone}
-                        onChange={handleInputChange}
-                        placeholder="10-digit mobile number"
-                        className={errors.phone ? "border-red-500" : ""}
-                      />
-                      {errors.phone && <p className="text-red-500 text-sm mt-1">{errors.phone}</p>}
-                    </div>
-
-                    <div>
-                      <Label htmlFor="addressLine1">Address Line 1 *</Label>
-                      <Input
-                        id="addressLine1"
-                        name="addressLine1"
-                        value={formData.addressLine1}
-                        onChange={handleInputChange}
-                        placeholder="House No., Building Name"
-                        className={errors.addressLine1 ? "border-red-500" : ""}
-                      />
-                      {errors.addressLine1 && <p className="text-red-500 text-sm mt-1">{errors.addressLine1}</p>}
-                    </div>
-
-                    <div>
-                      <Label htmlFor="addressLine2">Address Line 2</Label>
-                      <Input
-                        id="addressLine2"
-                        name="addressLine2"
-                        value={formData.addressLine2}
-                        onChange={handleInputChange}
-                        placeholder="Road Name, Area, Colony"
-                      />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <Label htmlFor="city">City *</Label>
-                        <Input
-                          id="city"
-                          name="city"
-                          value={formData.city}
-                          onChange={handleInputChange}
-                          className={errors.city ? "border-red-500" : ""}
-                        />
-                        {errors.city && <p className="text-red-500 text-sm mt-1">{errors.city}</p>}
-                      </div>
-
-                      <div>
-                        <Label htmlFor="state">State *</Label>
-                        <Input
-                          id="state"
-                          name="state"
-                          value={formData.state}
-                          onChange={handleInputChange}
-                          className={errors.state ? "border-red-500" : ""}
-                        />
-                        {errors.state && <p className="text-red-500 text-sm mt-1">{errors.state}</p>}
-                      </div>
-                    </div>
-
-                    <div>
-                      <Label htmlFor="pincode">Pincode *</Label>
-                      <Input
-                        id="pincode"
-                        name="pincode"
-                        value={formData.pincode}
-                        onChange={handleInputChange}
-                        placeholder="6-digit pincode"
-                        className={errors.pincode ? "border-red-500" : ""}
-                      />
-                      {errors.pincode && <p className="text-red-500 text-sm mt-1">{errors.pincode}</p>}
-                    </div>
-                  </div>
-                </Card>
-
-                <Card className="p-6 mb-6">
-                  <div className="flex items-center justify-between mb-2">
-                    <h2 className="text-xl font-bold">Secure Payment</h2>
-                    <ShieldCheck className="h-5 w-5 text-green-600" />
-                  </div>
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Your transaction will be securely processed by FlowPay.
-                  </p>
-
-                  <div className="flex items-center space-x-3 p-4 border rounded-lg bg-accent/50">
-                    <Smartphone className="h-6 w-6 text-primary" />
-                    <div>
-                      <p className="font-bold">FlowPay Secure Checkout</p>
-                      <p className="text-sm text-muted-foreground">UPI, Credit/Debit Cards, NetBanking</p>
-                    </div>
-                  </div>
-                </Card>
-
-                <Button 
-                  type="submit" 
-                  size="lg" 
-                  className="w-full" 
-                  disabled={!stockValidation.isValid}
-                >
-                  {!stockValidation.isValid ? 'Fix Stock Issues First' : 'Continue to Payment'}
-                </Button>
-              </form>
-            </div>
-
-            {/* Order Summary */}
-            <div className="lg:col-span-1">
-              <Card className="p-6 sticky top-24">
-                <h2 className="text-xl font-bold mb-4">Order Summary</h2>
-                
-                <div className="space-y-3 mb-4">
-                  {cart.items.map((item) => {
-                    const currentStock = stockInfo[item.productId]
-                    const hasStockIssue = currentStock !== undefined && (currentStock === 0 || item.quantity > currentStock)
-                    
-                    return (
-                      <div key={item.id} className={`flex gap-3 ${hasStockIssue ? 'opacity-60' : ''}`}>
-                        <div className="w-16 h-16 bg-gray-100 rounded overflow-hidden flex-shrink-0">
-                          <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="font-medium text-sm">{item.name}</p>
-                          <p className="text-sm text-muted-foreground">Qty: {item.quantity}</p>
-                          {currentStock !== undefined && (
-                            <StockStatus stock={currentStock} variant="text" className="text-xs" />
-                          )}
-                          <p className="text-sm font-bold">₹{(item.price * item.quantity).toFixed(2)}</p>
-                          {hasStockIssue && (
-                            <p className="text-xs text-red-600 mt-1">
-                              {currentStock === 0 ? 'Out of stock' : `Only ${currentStock} available`}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-
-                <Separator className="my-4" />
-
-                <div className="space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Subtotal</span>
-                    <span className="font-medium">₹{getTotalAmount().toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Shipping</span>
-                    <span className="font-medium text-green-600">FREE</span>
-                  </div>
-                  <Separator />
-                  <div className="flex justify-between text-lg font-bold">
-                    <span>Total</span>
-                    <span>₹{getTotalAmount().toFixed(2)}</span>
-                  </div>
-                </div>
-              </Card>
-            </div>
-          </div>
-        </motion.div>
+            </motion.form>
+          )}
+        </AnimatePresence>
       </div>
-
       <Footer />
     </div>
   )
