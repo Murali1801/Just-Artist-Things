@@ -142,45 +142,164 @@ export default function CheckoutPage() {
   if (!user || !cart || cart.items.length === 0) return null
   const total = getTotalAmount()
 
-  const Field = ({ name, label, placeholder, icon, type = "text", inputMode, autoComplete }: {
-    name: keyof Form; label: string; placeholder?: string; icon?: React.ReactNode; 
-    type?: string; inputMode?: "text" | "tel" | "numeric"; autoComplete?: string
-  }) => (
-    <div className="space-y-1.5">
-      <Label htmlFor={name} className="text-sm font-semibold flex items-center gap-1.5 text-foreground/80">
-        {icon} {label}
-      </Label>
+// ─── Sub-Components ──────────────────────────────────────────────────────────
+const Field = ({ 
+  name, label, placeholder, icon, type = "text", inputMode, autoComplete,
+  value, onChange, error, disabled
+}: {
+  name: string; label: string; placeholder?: string; icon?: React.ReactNode; 
+  type?: string; inputMode?: "text" | "tel" | "numeric"; autoComplete?: string
+  value: string; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void
+  error?: string; disabled?: boolean
+}) => (
+  <div className="space-y-1.5 group">
+    <Label 
+      htmlFor={name} 
+      className={`text-[13px] font-bold transition-colors duration-200 ${error ? "text-red-500" : "text-foreground/70 group-focus-within:text-teal-600"}`}
+    >
+      {label}
+    </Label>
+    <div className="relative">
+      {icon && (
+        <div className={`absolute left-3.5 top-1/2 -translate-y-1/2 transition-colors duration-200 ${error ? "text-red-400" : "text-muted-foreground group-focus-within:text-teal-500"}`}>
+          {React.cloneElement(icon as React.ReactElement, { size: 18 })}
+        </div>
+      )}
       <Input
-        id={name} name={name} value={form[name]}
-        onChange={handleChange} placeholder={placeholder}
-        disabled={processing}
+        id={name} 
+        name={name} 
+        value={value}
+        onChange={onChange} 
+        placeholder={placeholder}
+        disabled={disabled}
         type={type}
         inputMode={inputMode}
         autoComplete={autoComplete}
-        className={`h-11 transition-all ${errors[name]
-          ? "border-red-400 ring-1 ring-red-300 focus:ring-red-400"
-          : "focus:border-teal-500 focus:ring-teal-200"}`}
+        className={`h-12 w-full transition-all duration-300 border shadow-none
+          ${icon ? "pl-11" : "pl-4"} pr-4 rounded-xl
+          ${error 
+            ? "bg-red-50/30 border-red-200 text-red-900 placeholder:text-red-300 focus:border-red-400 focus:ring-4 focus:ring-red-400/10" 
+            : "bg-slate-50/50 border-slate-200 focus:bg-white focus:border-teal-500 focus:ring-4 focus:ring-teal-500/10"
+          }`}
       />
-      <AnimatePresence>
-        {errors[name] && (
-          <motion.p
-            initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
-            className="text-xs font-medium text-red-500 flex items-center gap-1"
-          >
-            <AlertTriangle size={11} /> {errors[name]}
-          </motion.p>
-        )}
-      </AnimatePresence>
     </div>
-  )
+    <AnimatePresence>
+      {error && (
+        <motion.p
+          initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -4 }}
+          className="text-xs font-semibold text-red-500 flex items-center gap-1.5 px-1 py-0.5"
+        >
+          <div className="w-1 h-1 rounded-full bg-red-400" /> {error}
+        </motion.p>
+      )}
+    </AnimatePresence>
+  </div>
+)
+
+// ─── Main Page ───────────────────────────────────────────────────────────────
+export default function CheckoutPage() {
+  const router = useRouter()
+  const { user }                         = useAuth()
+  const { cart, getTotalAmount, clearCart } = useCart()
+  const [form, setForm]                  = useState<Form>(EMPTY)
+  const [errors, setErrors]              = useState<Record<string, string>>({})
+  const [processing, setProcessing]      = useState(false)
+  const [statusText, setStatusText]      = useState("")
+
+  useEffect(() => {
+    if (!user) router.push("/home")
+    else if (!cart || cart.items.length === 0) router.push("/cart")
+  }, [user, cart, router])
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target
+    setForm(p => ({ ...p, [name]: value }))
+    if (errors[name]) setErrors(p => { const n = {...p}; delete n[name]; return n })
+  }
+
+  const handlePay = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const errs = validate(form)
+    if (Object.keys(errs).length) {
+      setErrors(errs)
+      toast.error("Please fix the highlighted fields.")
+      return
+    }
+    if (!cart || cart.items.length === 0) { toast.error("Your cart is empty."); return }
+
+    setProcessing(true)
+    setStatusText("Creating your payment session…")
+
+    try {
+      // ── Call our local server-side proxy (no CORS, secure) ────────────────
+      const res = await fetch("/api/initiate-payment", {
+        method:  "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount:       getTotalAmount(),
+          fullName:     form.fullName,
+          phone:        form.phone,
+          email:        user!.email ?? "",
+          addressLine1: form.addressLine1,
+          addressLine2: form.addressLine2,
+          city:         form.city,
+          state:        form.state,
+          pincode:      form.pincode,
+          items:        cart.items.map(i => ({
+            name:     i.name,
+            quantity: i.quantity,
+            price:    i.price,
+            image:    i.image || "",
+          })),
+        }),
+      })
+
+      const json = await res.json()
+
+      if (!res.ok || !json.checkout_url) {
+        throw new Error(json.error || `Payment session failed (HTTP ${res.status})`)
+      }
+
+      // ── Save order info for /orders sync (non-blocking, fire & forget) ────
+      try {
+        sessionStorage.setItem("pendingPayment", JSON.stringify({
+          flowPayOrderId: json.order_id,
+          amount:  getTotalAmount(),
+          items:   cart.items,
+          address: form,
+        }))
+      } catch { /* ignored */ }
+
+      // ── Cart cleared only after payment confirmed (in /orders page) ───────
+      // DO NOT clearCart() here.
+
+      setStatusText(`Redirecting to secure checkout…`)
+
+      // Small visual delay so user sees the status message
+      await new Promise(r => setTimeout(r, 400))
+
+      // ── REDIRECT ─────────────────────────────────────────────────────────
+      console.log("[Checkout] Redirecting to:", json.checkout_url)
+      window.location.href = json.checkout_url
+
+    } catch (err) {
+      console.error("[Checkout] Error:", err)
+      toast.error(err instanceof Error ? err.message : "Something went wrong. Please try again.")
+      setProcessing(false)
+      setStatusText("")
+    }
+  }
+
+  if (!user || !cart || cart.items.length === 0) return null
+  const total = getTotalAmount()
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-teal-50/20 to-cyan-50/20 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
       <Header />
 
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-6 pt-12">
         {!processing && (
-          <Button variant="ghost" onClick={() => router.push("/cart")} className="mb-6 -ml-2 text-muted-foreground">
+          <Button variant="ghost" onClick={() => router.push("/cart")} className="mb-8 -ml-2 text-muted-foreground/70 hover:text-teal-600 transition-colors">
             <ArrowLeft className="mr-2 h-4 w-4" /> Back to Cart
           </Button>
         )}
@@ -238,25 +357,50 @@ export default function CheckoutPage() {
                     </h2>
                     <div className="grid sm:grid-cols-2 gap-x-4 gap-y-4">
                       <div className="sm:col-span-2">
-                        <Field name="fullName"     label="Full Name *"         placeholder="As on courier label"         icon={<User size={12} className="text-muted-foreground"/>} autoComplete="name" />
+                        <Field 
+                          name="fullName" label="Full Name *" placeholder="As on courier label" 
+                          icon={<User size={12} className="text-muted-foreground"/>} autoComplete="name" 
+                          value={form.fullName} onChange={handleChange} error={errors.fullName} disabled={processing}
+                        />
                       </div>
                       <div className="sm:col-span-2">
-                        <Field name="phone"        label="Mobile Number *"     placeholder="10-digit number"             icon={<Phone size={12} className="text-muted-foreground"/>} type="tel" inputMode="tel" autoComplete="tel" />
+                        <Field 
+                          name="phone" label="Mobile Number *" placeholder="10-digit number" 
+                          icon={<Phone size={12} className="text-muted-foreground"/>} type="tel" inputMode="tel" autoComplete="tel" 
+                          value={form.phone} onChange={handleChange} error={errors.phone} disabled={processing}
+                        />
                       </div>
                       <div className="sm:col-span-2">
-                        <Field name="addressLine1" label="Address Line 1 *"    placeholder="House No., Building, Street" icon={<Home size={12} className="text-muted-foreground"/>} autoComplete="address-line1" />
+                        <Field 
+                          name="addressLine1" label="Address Line 1 *" placeholder="House No., Building, Street" 
+                          icon={<Home size={12} className="text-muted-foreground"/>} autoComplete="address-line1" 
+                          value={form.addressLine1} onChange={handleChange} error={errors.addressLine1} disabled={processing}
+                        />
                       </div>
                       <div className="sm:col-span-2">
-                        <Field name="addressLine2" label="Address Line 2 (Optional)"      placeholder="Area, Colony, Landmark"      icon={<Building2 size={12} className="text-muted-foreground"/>} autoComplete="address-line2" />
+                        <Field 
+                          name="addressLine2" label="Address Line 2 (Optional)" placeholder="Area, Colony, Landmark" 
+                          icon={<Building2 size={12} className="text-muted-foreground"/>} autoComplete="address-line2" 
+                          value={form.addressLine2} onChange={handleChange} error={errors.addressLine2} disabled={processing}
+                        />
                       </div>
                       <div>
-                        <Field name="city"     label="City *"    placeholder="Mumbai" autoComplete="address-level2" />
+                        <Field 
+                          name="city" label="City *" placeholder="Mumbai" autoComplete="address-level2" 
+                          value={form.city} onChange={handleChange} error={errors.city} disabled={processing}
+                        />
                       </div>
                       <div>
-                        <Field name="state"    label="State *"   placeholder="Maharashtra" autoComplete="address-level1" />
+                        <Field 
+                          name="state" label="State *" placeholder="Maharashtra" autoComplete="address-level1" 
+                          value={form.state} onChange={handleChange} error={errors.state} disabled={processing}
+                        />
                       </div>
                       <div className="sm:col-span-2">
-                        <Field name="pincode"  label="Pincode *" placeholder="6-digit PIN" type="text" inputMode="numeric" autoComplete="postal-code" />
+                        <Field 
+                          name="pincode" label="Pincode *" placeholder="6-digit PIN" type="text" inputMode="numeric" autoComplete="postal-code" 
+                          value={form.pincode} onChange={handleChange} error={errors.pincode} disabled={processing}
+                        />
                       </div>
                     </div>
                   </div>
