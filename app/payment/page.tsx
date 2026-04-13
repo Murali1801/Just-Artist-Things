@@ -107,9 +107,14 @@ export default function PaymentPage() {
 
       const { order_id: flowPayOrderId } = await response.json()
 
-      // ── Step 2: Create local order in brochure Firebase ──────────────────
-      // paymentStatus is set to Pending — stock will be deducted ONLY after payment confirmed.
-      await orderService.createOrder({
+      // ── Step 2: Redirect to FlowPay immediately ───────────────────────────
+      // Do this FIRST — the FlowPay order exists and the user must reach it.
+      // Local order creation & cart clearing are secondary side-effects.
+      // They run in the background and must NEVER block this redirect.
+      sessionStorage.removeItem("checkoutData")
+
+      // Fire-and-forget: create local order record (for the brochure's /orders page)
+      orderService.createOrder({
         userId: user!.uid,
         userEmail: user!.email || "",
         userName: user!.displayName || checkoutData.shippingAddress.fullName || "Guest",
@@ -120,14 +125,19 @@ export default function PaymentPage() {
         paymentStatus: "Pending (FlowPay)",
         orderStatus: "Payment Verification",
         externalOrderId: flowPayOrderId,
+      }).catch((e: unknown) => {
+        // Non-fatal: order will still be confirmed by FlowPay webhook
+        console.error("[FlowPay] Local order creation failed (non-fatal):", e)
       })
 
-      // ── Step 3: Clear cart, wipe session data, redirect to FlowPay ───────
-      await clearCart()
-      sessionStorage.removeItem("checkoutData")
+      // Fire-and-forget: clear the cart
+      clearCart().catch((e: unknown) => {
+        console.error("[FlowPay] Cart clear failed (non-fatal):", e)
+      })
 
-      // Hard redirect — user leaves our domain and enters FlowPay checkout
+      // Hard redirect → user enters FlowPay checkout for this specific order
       window.location.href = `${FLOWPAY_FRONTEND_URL}/pay/${flowPayOrderId}`
+
     } catch (error) {
       console.error("[FlowPay] Checkout error:", error)
       const msg =
