@@ -26,18 +26,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(currentUser);
       
       if (currentUser?.email) {
+        const isEnvAdmin = process.env.NEXT_PUBLIC_ADMIN_EMAIL
+          ?.split(',')
+          .map(e => e.trim().toLowerCase())
+          .includes(currentUser.email.toLowerCase()) || false;
+
         try {
-          // Support both "admins" and "admin" collection names just in case
-          const adminsDoc = await getDoc(doc(db, 'admins', currentUser.email));
-          const adminOldDoc = await getDoc(doc(db, 'admin', currentUser.email));
-          
-          const isDbAdmin = adminsDoc.exists() || adminOldDoc.exists();
-          const isEnvAdmin = process.env.NEXT_PUBLIC_ADMIN_EMAIL?.split(',').map(e => e.trim()).includes(currentUser.email) || false;
-          
-          setIsAdmin(isDbAdmin || isEnvAdmin);
+          // Only check DB if it's not already an ENV admin (saves a request and avoids permission errors)
+          if (isEnvAdmin) {
+            setIsAdmin(true);
+          } else {
+            const adminsDoc = await getDoc(doc(db, 'admins', currentUser.email));
+            const adminOldDoc = await getDoc(doc(db, 'admin', currentUser.email));
+            setIsAdmin(adminsDoc.exists() || adminOldDoc.exists());
+          }
         } catch (error) {
-          console.error("Error checking admin status:", error);
-          setIsAdmin(false);
+          console.error("Error checking database admin status:", error);
+          // If DB check fails, we still honor the Envoy Admin status
+          setIsAdmin(isEnvAdmin);
         }
       } else {
         setIsAdmin(false);
